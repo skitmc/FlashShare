@@ -2,8 +2,8 @@
 <html lang="en" class="h-full bg-[#07090e] text-slate-100 antialiased dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FLASHSHARE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FLASHSHARE - Instant P2P Messenger & Transfer</title>
   
   <!-- Dynamic SVG Favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>">
@@ -60,20 +60,20 @@
 
   <style>
     /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
     ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
 
     /* Glassmorphism Classes */
     .glass-panel {
-      background: rgba(15, 23, 42, 0.7);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
     .glass-input {
-      background: rgba(8, 14, 26, 0.6);
+      background: rgba(8, 14, 26, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.12);
       transition: all 0.2s ease;
     }
@@ -85,80 +85,101 @@
     .message-hover:hover .msg-actions {
       opacity: 1;
     }
+
+    /* Mobile Drawer Transition Utility */
+    .sidebar-drawer {
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
   </style>
 </head>
 <body class="h-full flex flex-col font-sans bg-[#07090e] text-slate-100 overflow-hidden select-none">
 
   <!-- Ambient Animated Background Glowing Blobs -->
   <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
-    <div class="absolute -top-32 -left-32 w-96 h-96 bg-brand-500/15 rounded-full blur-3xl animate-blob-float-1"></div>
-    <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-accent-500/15 rounded-full blur-3xl animate-blob-float-2"></div>
+    <div class="absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 bg-brand-500/15 rounded-full blur-3xl animate-blob-float-1"></div>
+    <div class="absolute -bottom-32 -right-32 w-80 h-80 sm:w-96 sm:h-96 bg-accent-500/15 rounded-full blur-3xl animate-blob-float-2"></div>
   </div>
 
   <!-- App Main Wrapper -->
-  <div class="relative z-10 flex-1 flex flex-col h-full max-w-[1600px] w-full mx-auto p-2 sm:p-4 lg:p-6">
+  <div class="relative z-10 flex-1 flex flex-col h-full max-w-[1600px] w-full mx-auto p-1.5 sm:p-4 lg:p-6">
 
     <!-- Top Navigation Header -->
-    <header class="glass-panel rounded-2xl px-4 py-3 mb-3 flex items-center justify-between shrink-0 shadow-2xl">
-      <!-- App Brand Logo -->
-      <div class="flex items-center space-x-3">
-        <div class="p-2.5 bg-gradient-to-tr from-brand-600 via-brand-500 to-accent-500 rounded-xl shadow-lg shadow-brand-500/30 flex items-center justify-center">
-          <i data-lucide="zap" class="w-6 h-6 text-white"></i>
+    <header class="glass-panel rounded-2xl px-3 py-2 sm:px-4 sm:py-3 mb-2 sm:mb-3 flex items-center justify-between shrink-0 shadow-2xl">
+      <!-- App Brand & Mobile Sidebar Toggle -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        
+        <!-- Mobile Sidebar / Conversations Drawer Toggle Button -->
+        <button onclick="toggleSidebarMobile()" class="md:hidden relative p-2 rounded-xl bg-slate-900 border border-slate-700/60 hover:border-brand-500 text-slate-200 transition flex items-center justify-center">
+          <i data-lucide="message-square" class="w-5 h-5 text-brand-400"></i>
+          <span id="mobileGlobalUnreadBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-brand-500 text-slate-950 text-[9px] font-black rounded-full items-center justify-center">0</span>
+        </button>
+
+        <div class="p-2 sm:p-2.5 bg-gradient-to-tr from-brand-600 via-brand-500 to-accent-500 rounded-xl shadow-lg shadow-brand-500/30 flex items-center justify-center">
+          <i data-lucide="zap" class="w-5 h-5 sm:w-6 sm:h-6 text-white"></i>
         </div>
         <div>
-          <div class="flex items-center space-x-2">
-            <h1 class="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent">FLASHSHARE</h1>
-            <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">P2P v2.0</span>
+          <div class="flex items-center space-x-1.5 sm:space-x-2">
+            <h1 class="text-base sm:text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent">FLASHSHARE</h1>
+            <span class="text-[9px] sm:text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">P2P</span>
           </div>
           <p class="text-[11px] text-slate-400 hidden sm:block">Direct Encrypted P2P Cross-Device Messenger</p>
         </div>
       </div>
 
       <!-- User Profile & Action Controls -->
-      <div class="flex items-center space-x-2 sm:space-x-3">
+      <div class="flex items-center space-x-1.5 sm:space-x-3">
         <!-- My FLASH ID Badge -->
-        <div onclick="openMyQRModal()" class="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/60 hover:border-brand-500/60 transition cursor-pointer group">
-          <div id="myAvatarDisplay" class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center text-white font-bold text-xs uppercase shadow-inner">
+        <div onclick="openMyQRModal()" class="flex items-center space-x-1.5 sm:space-x-2 px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/60 hover:border-brand-500/60 transition cursor-pointer group">
+          <div id="myAvatarDisplay" class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center text-white font-bold text-xs uppercase shadow-inner">
             ?
           </div>
-          <div class="text-left hidden md:block">
-            <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Your FLASH ID</p>
+          <div class="text-left hidden sm:block">
+            <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Your FLASH ID</p>
             <p id="myFlashIdDisplay" class="font-mono text-xs font-bold text-brand-400 group-hover:text-white transition">FLASH------</p>
           </div>
           <i data-lucide="qr-code" class="w-4 h-4 text-slate-400 group-hover:text-brand-400 transition"></i>
         </div>
 
         <!-- Camera Scanner Button -->
-        <button onclick="openCameraScannerModal()" class="p-2.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 border border-brand-500/30 hover:border-brand-500 transition flex items-center space-x-1.5 text-xs font-semibold" title="Scan Friend's QR Code">
+        <button onclick="openCameraScannerModal()" class="p-2 sm:p-2.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 border border-brand-500/30 hover:border-brand-500 transition flex items-center space-x-1.5 text-xs font-semibold" title="Scan Friend's QR Code">
           <i data-lucide="camera" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">Scan QR</span>
+          <span class="hidden md:inline">Scan QR</span>
         </button>
 
         <!-- Edit Profile Button -->
-        <button onclick="openProfileModal()" class="p-2.5 rounded-xl glass-panel hover:bg-slate-800/80 text-slate-300 hover:text-white transition" title="Edit Profile">
+        <button onclick="openProfileModal()" class="p-2 sm:p-2.5 rounded-xl glass-panel hover:bg-slate-800/80 text-slate-300 hover:text-white transition" title="Edit Profile">
           <i data-lucide="user-cog" class="w-4 h-4"></i>
         </button>
       </div>
     </header>
 
     <!-- Main Workspace (Sidebar + Active Chat Window) -->
-    <div class="flex-1 flex space-x-3 min-h-0 overflow-hidden">
+    <div class="flex-1 flex space-x-0 md:space-x-3 min-h-0 overflow-hidden relative">
 
-      <!-- LEFT SIDEBAR: Active Chats & Contacts -->
-      <aside id="sidebar" class="w-full md:w-80 lg:w-96 glass-panel rounded-2xl flex flex-col shrink-0 shadow-2xl transition-all duration-300 overflow-hidden z-20">
+      <!-- Backdrop Overlay for Mobile Drawer -->
+      <div id="sidebarBackdrop" onclick="closeSidebarMobile()" class="md:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-20 hidden transition-opacity"></div>
+
+      <!-- SIDEBAR: Active Chats & Contacts (Slide-over drawer on mobile, static on desktop) -->
+      <aside id="sidebar" class="sidebar-drawer fixed md:static inset-y-0 left-0 z-30 w-full sm:w-80 md:w-80 lg:w-96 glass-panel rounded-r-2xl md:rounded-2xl flex flex-col shrink-0 shadow-2xl overflow-hidden -translate-x-full md:translate-x-0">
         
         <!-- Sidebar Top Header & Add Chat Button -->
-        <div class="p-3.5 border-b border-slate-800/80 space-y-3 shrink-0">
+        <div class="p-3 border-b border-slate-800/80 space-y-2.5 shrink-0">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
               <i data-lucide="message-square" class="w-4 h-4 text-brand-400"></i>
               <h2 class="font-bold text-sm tracking-wide text-slate-200">Conversations</h2>
               <span id="chatCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">0</span>
             </div>
-            <button onclick="openNewChatModal()" class="p-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold transition flex items-center space-x-1 text-xs shadow-lg shadow-brand-500/20">
-              <i data-lucide="plus" class="w-4 h-4"></i>
-              <span>New Chat</span>
-            </button>
+            <div class="flex items-center space-x-1">
+              <button onclick="openNewChatModal()" class="p-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold transition flex items-center space-x-1 text-xs shadow-lg shadow-brand-500/20">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span class="inline">New Chat</span>
+              </button>
+              <!-- Mobile Close Sidebar Drawer -->
+              <button onclick="closeSidebarMobile()" class="md:hidden p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800/60">
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
           </div>
 
           <!-- Contact Search Bar -->
@@ -176,48 +197,55 @@
       </aside>
 
       <!-- RIGHT PANEL: Active Chat Conversation Window -->
-      <main id="chatWindow" class="flex-1 glass-panel rounded-2xl flex flex-col shrink min-w-0 shadow-2xl relative overflow-hidden">
+      <main id="chatWindow" class="flex-1 glass-panel rounded-2xl flex flex-col shrink min-w-0 shadow-2xl relative overflow-hidden h-full">
         
         <!-- Empty State (When no chat is selected) -->
         <div id="emptyChatState" class="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500 space-y-4">
-          <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl relative">
-            <i data-lucide="messages-square" class="w-16 h-16 text-slate-600"></i>
+          <div class="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl relative">
+            <i data-lucide="messages-square" class="w-12 h-12 sm:w-16 sm:h-16 text-slate-600"></i>
             <div class="absolute -bottom-1 -right-1 p-2 bg-brand-500 rounded-full text-slate-950 shadow-lg">
-              <i data-lucide="zap" class="w-4 h-4"></i>
+              <i data-lucide="zap" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
             </div>
           </div>
           <div>
-            <h3 class="text-base font-bold text-slate-300">No Chat Selected</h3>
-            <p class="text-xs text-slate-500 max-w-sm mt-1">Select an active contact from the sidebar or click "New Chat" to connect via FLASH ID or QR Code.</p>
+            <h3 class="text-sm sm:text-base font-bold text-slate-300">No Chat Selected</h3>
+            <p class="text-xs text-slate-500 max-w-sm mt-1">Select a contact or click "New Chat" to connect via FLASH ID or QR Code.</p>
           </div>
-          <button onclick="openNewChatModal()" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition shadow-lg shadow-brand-600/20 flex items-center space-x-2">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i>
-            <span>Start a New Conversation</span>
-          </button>
+          <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+            <button onclick="toggleSidebarMobile()" class="md:hidden px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition border border-slate-700 flex items-center justify-center space-x-2">
+              <i data-lucide="message-square" class="w-4 h-4 text-brand-400"></i>
+              <span>Open Conversations List</span>
+            </button>
+            <button onclick="openNewChatModal()" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition shadow-lg shadow-brand-600/20 flex items-center justify-center space-x-2">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+              <span>Start New Chat</span>
+            </button>
+          </div>
         </div>
 
         <!-- Active Chat Interface -->
         <div id="activeChatInterface" class="flex-1 flex flex-col min-h-0 hidden">
           
           <!-- Chat Header Bar -->
-          <div class="px-4 py-3 border-b border-slate-800/80 flex items-center justify-between shrink-0 bg-slate-900/40 backdrop-blur-md">
-            <div class="flex items-center space-x-3 min-w-0">
-              <!-- Mobile Back Button -->
-              <button onclick="closeChatMobile()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800/60">
-                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+          <div class="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-slate-800/80 flex items-center justify-between shrink-0 bg-slate-900/40 backdrop-blur-md">
+            <div class="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+              
+              <!-- Mobile Back Button to return to Conversations -->
+              <button onclick="toggleSidebarMobile()" class="md:hidden p-2 rounded-xl text-brand-400 hover:text-white bg-slate-800/80 border border-slate-700/60 flex items-center space-x-1" title="Back to Chats List">
+                <i data-lucide="chevron-left" class="w-5 h-5"></i>
               </button>
 
-              <div id="activePeerAvatar" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-600 to-brand-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-inner">
+              <div id="activePeerAvatar" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-accent-600 to-brand-500 flex items-center justify-center text-white font-bold text-xs sm:text-sm shrink-0 shadow-inner">
                 ?
               </div>
               <div class="min-w-0">
-                <div class="flex items-center space-x-2">
-                  <h3 id="activePeerName" class="font-bold text-sm text-slate-100 truncate">Contact Name</h3>
-                  <button onclick="openNicknameModal()" title="Edit Custom Nickname" class="text-slate-400 hover:text-brand-400 transition">
+                <div class="flex items-center space-x-1.5">
+                  <h3 id="activePeerName" class="font-bold text-xs sm:text-sm text-slate-100 truncate">Contact Name</h3>
+                  <button onclick="openNicknameModal()" title="Edit Custom Nickname" class="text-slate-400 hover:text-brand-400 transition p-0.5">
                     <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                   </button>
                 </div>
-                <div class="flex items-center space-x-2 text-[11px]">
+                <div class="flex items-center space-x-2 text-[10px] sm:text-[11px]">
                   <span id="activePeerId" class="font-mono text-slate-400 truncate">FLASH-XXXXX</span>
                   <span class="text-slate-600">•</span>
                   <span id="activeConnectionStatus" class="flex items-center space-x-1 font-medium text-slate-400">
@@ -229,7 +257,7 @@
             </div>
 
             <!-- Chat Actions Menu -->
-            <div class="flex items-center space-x-1 sm:space-x-2 shrink-0">
+            <div class="flex items-center space-x-1 shrink-0">
               <!-- Reconnect Button -->
               <button onclick="reconnectActivePeer()" title="Force WebRTC Reconnect" class="p-2 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/60 transition">
                 <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -246,62 +274,62 @@
           </div>
 
           <!-- Messages Stream Container -->
-          <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+          <div id="messagesContainer" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-h-0">
             <!-- Dynamic Message Bubbles appended here -->
           </div>
 
           <!-- Drag and Drop Overlay Indicator -->
-          <div id="dropOverlay" class="absolute inset-0 bg-brand-950/80 backdrop-blur-md border-2 border-dashed border-brand-400 z-30 hidden flex flex-col items-center justify-center space-y-3 text-brand-300 pointer-events-none">
+          <div id="dropOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md border-2 border-dashed border-brand-400 z-30 hidden flex flex-col items-center justify-center space-y-3 text-brand-300 pointer-events-none">
             <i data-lucide="upload-cloud" class="w-12 h-12 animate-bounce text-brand-400"></i>
-            <p class="font-bold text-base">Drop files here to send directly</p>
+            <p class="font-bold text-sm sm:text-base">Drop files here to send directly</p>
           </div>
 
           <!-- Voice Recording Bar -->
-          <div id="voiceRecordingBar" class="px-4 py-2 bg-red-950/60 border-t border-red-800/60 flex items-center justify-between hidden">
-            <div class="flex items-center space-x-3 text-xs font-semibold text-red-300">
-              <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
-              <span>Recording Voice Note...</span>
+          <div id="voiceRecordingBar" class="px-3 py-2 bg-red-950/80 border-t border-red-800/60 flex items-center justify-between hidden shrink-0">
+            <div class="flex items-center space-x-2 text-xs font-semibold text-red-300">
+              <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+              <span>Recording Audio...</span>
               <span id="voiceTimer" class="font-mono text-white">00:00</span>
             </div>
-            <div class="flex items-center space-x-2">
-              <button onclick="cancelVoiceRecording()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700">Cancel</button>
-              <button onclick="stopAndSendVoiceNote()" class="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-500 flex items-center space-x-1">
+            <div class="flex items-center space-x-1.5">
+              <button onclick="cancelVoiceRecording()" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700">Cancel</button>
+              <button onclick="stopAndSendVoiceNote()" class="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-500 flex items-center space-x-1">
                 <i data-lucide="send" class="w-3 h-3"></i>
-                <span>Send Voice Note</span>
+                <span>Send</span>
               </button>
             </div>
           </div>
 
           <!-- Chat Input Bar -->
-          <div class="p-3 border-t border-slate-800/80 bg-slate-900/60 backdrop-blur-md">
-            <form onsubmit="handleSendMessage(event)" class="flex items-center space-x-2">
+          <div class="p-2.5 sm:p-3 border-t border-slate-800/80 bg-slate-900/60 backdrop-blur-md shrink-0">
+            <form onsubmit="handleSendMessage(event)" class="flex items-center space-x-1.5 sm:space-x-2">
               
               <!-- File Attachment Controls -->
-              <div class="flex items-center space-x-1">
+              <div class="flex items-center space-x-0.5 sm:space-x-1">
                 <!-- Gallery File Picker -->
-                <button type="button" onclick="document.getElementById('fileInput').click()" class="p-2.5 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/80 transition" title="Send Image or File from Gallery">
-                  <i data-lucide="image-plus" class="w-5 h-5"></i>
+                <button type="button" onclick="document.getElementById('fileInput').click()" class="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/80 transition" title="Send Image or File from Gallery">
+                  <i data-lucide="image-plus" class="w-4 h-4 sm:w-5 sm:h-5"></i>
                 </button>
                 <input id="fileInput" type="file" accept="image/*,video/*,audio/*,application/pdf" multiple class="hidden" onchange="handleFileSelect(event)">
 
                 <!-- Mobile Camera Trigger -->
-                <button type="button" onclick="document.getElementById('cameraInput').click()" class="p-2.5 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/80 transition hidden sm:flex" title="Take Photo with Camera">
-                  <i data-lucide="camera" class="w-5 h-5"></i>
+                <button type="button" onclick="document.getElementById('cameraInput').click()" class="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/80 transition" title="Take Photo with Camera">
+                  <i data-lucide="camera" class="w-4 h-4 sm:w-5 sm:h-5"></i>
                 </button>
                 <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
 
                 <!-- Voice Note Trigger -->
-                <button type="button" onclick="toggleVoiceRecording()" class="p-2.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800/80 transition" title="Record Voice Note">
-                  <i data-lucide="mic" class="w-5 h-5"></i>
+                <button type="button" onclick="toggleVoiceRecording()" class="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800/80 transition" title="Record Voice Note">
+                  <i data-lucide="mic" class="w-4 h-4 sm:w-5 sm:h-5"></i>
                 </button>
               </div>
 
               <!-- Message Input Textarea -->
-              <input id="messageInput" type="text" placeholder="Type a message or paste images (Ctrl+V)..." autocomplete="off" class="flex-1 glass-input px-4 py-2.5 rounded-xl text-xs sm:text-sm text-slate-100 placeholder-slate-500">
+              <input id="messageInput" type="text" placeholder="Type a message..." autocomplete="off" class="flex-1 glass-input px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm text-slate-100 placeholder-slate-500">
 
               <!-- Send Button -->
-              <button type="submit" class="p-2.5 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-slate-950 font-bold transition shadow-lg shadow-brand-500/20 shrink-0">
-                <i data-lucide="send" class="w-5 h-5"></i>
+              <button type="submit" class="p-2 sm:p-2.5 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-slate-950 font-bold transition shadow-lg shadow-brand-500/20 shrink-0">
+                <i data-lucide="send" class="w-4 h-4 sm:w-5 sm:h-5"></i>
               </button>
             </form>
           </div>
@@ -318,10 +346,10 @@
 
   <!-- Modal 1: My FLASH ID & QR Code Modal -->
   <div id="myQRModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center space-y-5 shadow-2xl relative border border-slate-800">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-5 sm:p-6 text-center space-y-4 shadow-2xl relative border border-slate-800">
       
-      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-base">Your Personal FLASH ID</h3>
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-slate-200 text-sm sm:text-base">Your Personal FLASH ID</h3>
         <button onclick="closeMyQRModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
@@ -329,7 +357,7 @@
 
       <!-- QR Code Wrapper -->
       <div class="flex flex-col items-center justify-center space-y-3">
-        <div class="p-4 bg-white rounded-2xl shadow-xl inline-block" id="qrcodeCanvas"></div>
+        <div class="p-3.5 bg-white rounded-2xl shadow-xl inline-block" id="qrcodeCanvas"></div>
         <p class="text-xs text-slate-400">Scan with another device camera to connect instantly</p>
       </div>
 
@@ -350,12 +378,12 @@
 
   <!-- Modal 2: Camera QR Reader Scanner -->
   <div id="cameraScannerModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 text-center shadow-2xl border border-slate-800 relative">
+    <div class="glass-panel w-full max-w-md rounded-3xl p-5 sm:p-6 space-y-4 text-center shadow-2xl border border-slate-800 relative">
       
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
         <div class="flex items-center space-x-2">
           <i data-lucide="camera" class="w-5 h-5 text-brand-400"></i>
-          <h3 class="font-bold text-slate-200 text-base">Scan Friend's QR Code</h3>
+          <h3 class="font-bold text-slate-200 text-sm sm:text-base">Scan Friend's QR Code</h3>
         </div>
         <button onclick="closeCameraScannerModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -379,10 +407,10 @@
 
   <!-- Modal 3: Start New Chat by FLASH ID -->
   <div id="newChatModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-800">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-800">
       
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-base">Connect to a Peer</h3>
+        <h3 class="font-bold text-slate-200 text-sm sm:text-base">Connect to a Peer</h3>
         <button onclick="closeNewChatModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
@@ -391,7 +419,7 @@
       <div class="space-y-3">
         <div>
           <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Enter Contact FLASH ID</label>
-          <input id="newPeerIdInput" type="text" placeholder="e.g. FLASH-K82M1" class="w-full font-mono text-sm px-4 py-2.5 rounded-xl glass-input uppercase text-white placeholder-slate-600">
+          <input id="newPeerIdInput" type="text" placeholder="e.g. FLASH-K82M1" class="w-full font-mono text-xs sm:text-sm px-4 py-2.5 rounded-xl glass-input uppercase text-white placeholder-slate-600">
         </div>
 
         <div>
@@ -409,10 +437,10 @@
 
   <!-- Modal 4: Edit Custom Nickname -->
   <div id="nicknameModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-800">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-800">
       
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-base">Edit Custom Nickname</h3>
+        <h3 class="font-bold text-slate-200 text-sm sm:text-base">Edit Custom Nickname</h3>
         <button onclick="closeNicknameModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
@@ -431,10 +459,10 @@
 
   <!-- Modal 5: Edit Profile Modal -->
   <div id="profileModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-800">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-800">
       
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-base">Your Profile Settings</h3>
+        <h3 class="font-bold text-slate-200 text-sm sm:text-base">Your Profile Settings</h3>
         <button onclick="closeProfileModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
@@ -460,12 +488,12 @@
 
   <!-- Modal 6: Fullscreen Image Lightbox Preview -->
   <div id="lightboxModal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4">
-    <div class="absolute top-4 right-4 flex items-center space-x-2">
-      <a id="lightboxDownloadBtn" download="flashshare_image.png" href="#" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition flex items-center space-x-2 text-xs font-semibold">
+    <div class="absolute top-4 right-4 flex items-center space-x-2 z-10">
+      <a id="lightboxDownloadBtn" download="flashshare_image.png" href="#" class="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition flex items-center space-x-2 text-xs font-semibold">
         <i data-lucide="download" class="w-4 h-4"></i>
-        <span>Download</span>
+        <span class="hidden sm:inline">Download</span>
       </a>
-      <button onclick="closeLightboxModal()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition">
+      <button onclick="closeLightboxModal()" class="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
     </div>
@@ -474,11 +502,11 @@
       <img id="lightboxImage" src="" alt="Preview" class="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-slate-800">
     </div>
     
-    <p id="lightboxCaption" class="mt-3 text-xs font-mono text-slate-400"></p>
+    <p id="lightboxCaption" class="mt-3 text-xs font-mono text-slate-400 text-center px-4"></p>
   </div>
 
   <!-- Toast Notifications Container -->
-  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none max-w-xs sm:max-w-sm w-full px-2"></div>
 
   <!-- Application Logic JavaScript -->
   <script>
@@ -492,6 +520,7 @@
     let messages = {}; // Format: { [peerId]: [ { id, sender, text, fileData, fileType, timestamp } ] }
     let activePeerId = null;
     let connections = {}; // Live PeerJS DataConnections
+    let isMobileSidebarOpen = false;
 
     // Voice Recorder state
     let mediaRecorder = null;
@@ -512,6 +541,7 @@
       setupDragAndDrop();
       setupPasteListener();
       renderContactsList();
+      updateGlobalUnreadBadge();
 
       // Check URL parameters for direct QR scan room connection
       const urlParams = new URLSearchParams(window.location.search);
@@ -520,6 +550,31 @@
         startNewChat(urlCode.toUpperCase());
       }
     });
+
+    // Mobile Sidebar Drawer Management
+    function toggleSidebarMobile() {
+      if (isMobileSidebarOpen) {
+        closeSidebarMobile();
+      } else {
+        openSidebarMobile();
+      }
+    }
+
+    function openSidebarMobile() {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      sidebar.classList.remove('-translate-x-full');
+      backdrop.classList.remove('hidden');
+      isMobileSidebarOpen = true;
+    }
+
+    function closeSidebarMobile() {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+      sidebar.classList.add('-translate-x-full');
+      backdrop.classList.add('hidden');
+      isMobileSidebarOpen = false;
+    }
 
     // 1. Session & Storage Management
     function initUserSession() {
@@ -688,6 +743,7 @@
 
         persistData();
         renderContactsList();
+        updateGlobalUnreadBadge();
 
         if (activePeerId === senderId) {
           appendMessageBubble(msgObj);
@@ -742,7 +798,7 @@
           timestamp: msgObj.timestamp
         });
       } else {
-        showToast('Peer offline. Saved locally.', 'info');
+        showToast('Peer offline. Message saved locally.', 'info');
       }
     }
 
@@ -768,7 +824,7 @@
       if (!activePeerId) return;
       const name = getContactDisplayName(activePeerId);
 
-      if (confirm(`Clear all chat history with ${name} on your device? (This won't delete messages on their device)`)) {
+      if (confirm(`Clear all chat history with ${name} on your device?`)) {
         messages[activePeerId] = [];
         contacts[activePeerId].lastMessage = 'Chat history cleared';
         persistData();
@@ -794,6 +850,7 @@
         activePeerId = null;
         persistData();
         renderContactsList();
+        updateGlobalUnreadBadge();
         
         document.getElementById('activeChatInterface').classList.add('hidden');
         document.getElementById('emptyChatState').classList.remove('hidden');
@@ -877,7 +934,7 @@
           </div>
 
           ${contact.unreadCount > 0 ? `
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500 text-slate-950 shrink-0">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500 text-slate-950 shrink-0 shadow">
               ${contact.unreadCount}
             </span>
           ` : ''}
@@ -887,6 +944,23 @@
       });
 
       lucide.createIcons();
+    }
+
+    function updateGlobalUnreadBadge() {
+      let totalUnread = 0;
+      Object.keys(contacts).forEach(id => {
+        totalUnread += (contacts[id].unreadCount || 0);
+      });
+
+      const badge = document.getElementById('mobileGlobalUnreadBadge');
+      if (totalUnread > 0) {
+        badge.innerText = totalUnread > 9 ? '9+' : totalUnread;
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+      } else {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+      }
     }
 
     function filterContacts() {
@@ -900,6 +974,10 @@
       }
       persistData();
       renderContactsList();
+      updateGlobalUnreadBadge();
+
+      // Automatically collapse sidebar on mobile when chat selected
+      closeSidebarMobile();
 
       document.getElementById('emptyChatState').classList.add('hidden');
       document.getElementById('activeChatInterface').classList.remove('hidden');
@@ -967,34 +1045,34 @@
         } else if (msg.fileType && msg.fileType.startsWith('audio/')) {
           mediaHTML = `
             <div class="mb-1.5">
-              <audio controls src="${msg.fileData}" class="max-w-xs rounded-xl"></audio>
+              <audio controls src="${msg.fileData}" class="max-w-[220px] sm:max-w-xs rounded-xl"></audio>
             </div>
           `;
         }
       }
 
       bubbleWrap.innerHTML = `
-        <div class="flex items-center space-x-2 max-w-[85%] sm:max-w-[70%]">
+        <div class="flex items-center space-x-1.5 max-w-[88%] sm:max-w-[75%]">
           ${isMe ? `
-            <button onclick="deleteSingleMessage('${msg.id}')" title="Delete message locally" class="msg-actions opacity-0 transition p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-red-400">
+            <button onclick="deleteSingleMessage('${msg.id}')" title="Delete message locally" class="msg-actions opacity-0 transition p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-red-400 shrink-0">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
           ` : ''}
 
-          <div class="p-3 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-md ${
+          <div class="p-2.5 sm:p-3 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-md ${
             isMe 
               ? 'bg-gradient-to-tr from-brand-600 to-brand-500 text-slate-950 font-medium rounded-tr-none' 
               : 'bg-slate-800/90 text-slate-100 border border-slate-700/60 rounded-tl-none'
           }">
             ${mediaHTML}
             ${msg.text ? `<p class="break-words">${escapeHTML(msg.text)}</p>` : ''}
-            <div class="text-[10px] mt-1 text-right font-mono opacity-60">
+            <div class="text-[9px] sm:text-[10px] mt-1 text-right font-mono opacity-60">
               ${msg.timestamp}
             </div>
           </div>
 
           ${!isMe ? `
-            <button onclick="deleteSingleMessage('${msg.id}')" title="Delete message locally" class="msg-actions opacity-0 transition p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-red-400">
+            <button onclick="deleteSingleMessage('${msg.id}')" title="Delete message locally" class="msg-actions opacity-0 transition p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-red-400 shrink-0">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
           ` : ''}
@@ -1008,11 +1086,6 @@
     function scrollChatToBottom() {
       const container = document.getElementById('messagesContainer');
       container.scrollTop = container.scrollHeight;
-    }
-
-    function closeChatMobile() {
-      document.getElementById('activeChatInterface').classList.add('hidden');
-      document.getElementById('emptyChatState').classList.remove('hidden');
     }
 
     // 6. Rich Media Sharing (Files, Images, Voice Notes)
@@ -1150,8 +1223,8 @@
 
       new QRCode(qrContainer, {
         text: shareableURL,
-        width: 180,
-        height: 180,
+        width: 170,
+        height: 170,
         colorDark: "#07090e",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.H
@@ -1341,7 +1414,7 @@
                : type === 'error' ? 'bg-red-950/90 border-red-700 text-red-200' 
                : 'bg-slate-900/90 border-slate-700 text-slate-200';
 
-      toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl border backdrop-blur-md text-xs font-semibold shadow-2xl transition transform translate-y-2 opacity-0 flex items-center space-x-2 ${bg}`;
+      toast.className = `pointer-events-auto px-3.5 py-2 rounded-xl border backdrop-blur-md text-xs font-semibold shadow-2xl transition transform translate-y-2 opacity-0 flex items-center space-x-2 ${bg}`;
       toast.innerHTML = `<span>${msg}</span>`;
 
       container.appendChild(toast);
