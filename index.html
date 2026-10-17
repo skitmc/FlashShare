@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlashShare - Instant P2P Image Transfer</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- PeerJS WebRTC CDN -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+            }
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Glassmorphism Styles */
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-input {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .glass-input:focus {
+      border-color: #0ea5e9;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.25);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 selection:bg-brand-500 selection:text-white">
+
+  <!-- Main Container -->
+  <div class="flex-1 flex flex-col max-w-5xl w-full mx-auto p-4 md:p-6 lg:p-8">
+    
+    <!-- Top Header -->
+    <header class="flex items-center justify-between pb-6 border-b border-slate-800 mb-6">
+      <div class="flex items-center space-x-3">
+        <div class="p-2.5 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-xl shadow-lg shadow-brand-500/20">
+          <i data-lucide="zap" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">FlashShare</h1>
+          <p class="text-xs text-slate-400 hidden sm:block">Direct P2P Cross-Device Image Transfer</p>
+        </div>
+      </div>
+      
+      <!-- Connection Status Badge -->
+      <div id="statusBadge" class="flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-slate-700/50">
+        <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+        <span id="statusText" class="text-slate-300">Initializing...</span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="flex p-1 bg-slate-900/80 rounded-xl mb-6 border border-slate-800 max-w-md mx-auto w-full">
+      <button id="tabReceiveBtn" onclick="switchMode('receive')" class="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-600 text-white shadow-md">
+        <i data-lucide="download" class="w-4 h-4"></i>
+        <span>Receive Images</span>
+      </button>
+      <button id="tabSendBtn" onclick="switchMode('send')" class="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200">
+        <i data-lucide="send" class="w-4 h-4"></i>
+        <span>Send Images</span>
+      </button>
+    </div>
+
+    <!-- Main Dynamic Content Area -->
+    <main class="flex-1 flex flex-col">
+      
+      <!-- RECEIVE / HOST MODE -->
+      <div id="receiveSection" class="flex-1 flex flex-col space-y-6">
+        
+        <!-- Code & QR Info Banner -->
+        <div class="glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            
+            <!-- Code Display Area -->
+            <div class="space-y-4">
+              <div>
+                <span class="text-xs uppercase tracking-wider font-semibold text-brand-500">Device Room Code</span>
+                <h2 class="text-slate-200 text-sm">Scan QR or enter this code on the sending device:</h2>
+              </div>
+              
+              <div class="flex items-center space-x-3">
+                <div id="roomCodeDisplay" class="text-3xl sm:text-4xl font-mono font-bold tracking-widest text-white bg-slate-950/80 px-5 py-3 rounded-xl border border-slate-700/80 shadow-inner flex-1 text-center select-all">
+                  ----
+                </div>
+                <button onclick="copyRoomCode()" title="Copy Code" class="p-3.5 glass-card hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition border border-slate-700">
+                  <i data-lucide="copy" class="w-5 h-5"></i>
+                </button>
+                <button onclick="generateNewRoom()" title="Generate New Code" class="p-3.5 glass-card hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition border border-slate-700">
+                  <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+                </button>
+              </div>
+
+              <div class="flex items-center space-x-2 text-xs text-slate-400">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                <span>Direct end-to-end WebRTC connection. No server storage.</span>
+              </div>
+            </div>
+
+            <!-- QR Code Display Area -->
+            <div class="flex flex-col items-center justify-center p-4 bg-slate-950/40 rounded-xl border border-slate-800/80">
+              <div class="relative group bg-white p-2.5 rounded-xl shadow-lg">
+                <img id="qrCodeImg" src="" alt="Room QR Code" class="w-36 h-36 object-contain hidden" />
+                <div id="qrPlaceholder" class="w-36 h-36 flex flex-col items-center justify-center text-slate-500 space-y-2">
+                  <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-brand-500"></i>
+                  <span class="text-xs">Generating QR...</span>
+                </div>
+              </div>
+              <p class="text-xs text-slate-400 mt-2">Scan with camera to open & connect instantly</p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Live Received Images Gallery -->
+        <div class="flex-1 glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80 flex flex-col">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="image" class="w-5 h-5 text-brand-500"></i>
+              <h3 class="font-semibold text-slate-200">Received Gallery</h3>
+              <span id="imageCountBadge" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">0</span>
+            </div>
+            
+            <button id="clearGalleryBtn" onclick="clearGallery()" class="hidden text-xs text-slate-400 hover:text-red-400 flex items-center space-x-1 transition">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              <span>Clear Gallery</span>
+            </button>
+          </div>
+
+          <!-- Gallery Empty State -->
+          <div id="galleryEmptyState" class="flex-1 flex flex-col items-center justify-center py-12 text-slate-500 space-y-3">
+            <div class="p-4 rounded-full bg-slate-900 border border-slate-800">
+              <i data-lucide="inbox" class="w-10 h-10 text-slate-600"></i>
+            </div>
+            <p class="text-sm font-medium">No images received yet</p>
+            <p class="text-xs text-slate-600 text-center max-w-sm">Connect from another device using the room code above and start sending photos!</p>
+          </div>
+
+          <!-- Image Grid -->
+          <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto max-h-[500px] pr-1"></div>
+        </div>
+
+      </div>
+
+      <!-- SEND / CONNECT MODE -->
+      <div id="sendSection" class="hidden flex-1 flex flex-col space-y-6">
+        
+        <!-- Code Connection Box -->
+        <div class="glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80">
+          <h2 class="text-lg font-semibold text-slate-200 mb-2">Connect to Receiver</h2>
+          <p class="text-xs text-slate-400 mb-4">Enter the 4-6 digit room code shown on the receiving device:</p>
+          
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+              <input id="connectCodeInput" type="text" maxlength="8" placeholder="Enter Room Code (e.g. A7K9)" class="w-full uppercase font-mono tracking-widest text-lg px-4 py-3 rounded-xl glass-input text-white placeholder-slate-600">
+            </div>
+            <button id="connectBtn" onclick="connectToHost()" class="px-6 py-3 bg-brand-600 hover:bg-brand-500 font-medium text-white rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-brand-600/20">
+              <i data-lucide="link" class="w-5 h-5"></i>
+              <span>Connect</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Transfer / Upload Area -->
+        <div id="senderUploadArea" class="opacity-50 pointer-events-none transition-all duration-300 flex-1 glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80 flex flex-col">
+          
+          <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
+            <h3 class="font-semibold text-slate-200 flex items-center space-x-2">
+              <i data-lucide="upload-cloud" class="w-5 h-5 text-brand-500"></i>
+              <span>Send Files</span>
+            </h3>
+            <span id="senderConnectionStatus" class="text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">Disconnected</span>
+          </div>
+
+          <!-- Drag and Drop Zone -->
+          <div id="dropZone" onclick="document.getElementById('fileInput').click()" class="flex-1 min-h-[220px] border-2 border-dashed border-slate-700 hover:border-brand-500/80 rounded-2xl flex flex-col items-center justify-center p-6 text-center cursor-pointer transition bg-slate-950/30 hover:bg-slate-950/50 group">
+            <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+            
+            <div class="p-4 rounded-full bg-slate-900 group-hover:scale-110 transition duration-300 border border-slate-800 mb-3">
+              <i data-lucide="image-plus" class="w-8 h-8 text-brand-500"></i>
+            </div>
+            <p class="text-sm font-medium text-slate-300 mb-1">Click to browse or drop images here</p>
+            <p class="text-xs text-slate-500">Supports PNG, JPG, WEBP, GIF, SVG</p>
+
+            <div class="mt-4 flex items-center space-x-3">
+              <button onclick="event.stopPropagation(); triggerCamera()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 flex items-center space-x-1.5 transition">
+                <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                <span>Use Camera</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Camera Hidden File Input -->
+          <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+
+          <!-- Transfer Progress & Queue -->
+          <div id="transferProgressContainer" class="mt-6 space-y-3 hidden">
+            <div class="flex justify-between items-center text-xs">
+              <span id="transferStatusText" class="text-slate-300 font-medium">Sending image...</span>
+              <span id="transferPercent" class="text-brand-400 font-mono">0%</span>
+            </div>
+            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
+              <div id="progressBar" class="bg-gradient-to-r from-brand-600 to-indigo-500 h-2 rounded-full transition-all duration-150 w-0"></div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Fullscreen Image Preview Modal -->
+  <div id="imageModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-4">
+    <div class="absolute top-4 right-4 flex items-center space-x-3">
+      <a id="modalDownloadBtn" download="transferred_image.png" href="#" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl border border-slate-700 transition flex items-center space-x-2 text-xs font-medium">
+        <i data-lucide="download" class="w-4 h-4"></i>
+        <span>Download</span>
+      </a>
+      <button onclick="closeModal()" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    
+    <div class="max-w-4xl max-h-[85vh] w-full flex items-center justify-center p-2">
+      <img id="modalImage" src="" alt="Preview" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl border border-slate-800">
+    </div>
+    
+    <div id="modalCaption" class="mt-3 text-xs font-mono text-slate-400"></div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- Application Logic JavaScript -->
+  <script>
+    // Global Application State
+    let peer = null;
+    let activeConn = null;
+    let currentMode = 'receive'; // 'receive' | 'send'
+    let currentRoomCode = '';
+    let receivedImages = [];
+    const PEER_PREFIX = 'flashshare-p2p-v1-';
+
+    // UI Elements
+    const statusBadge = document.getElementById('statusBadge');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+    const qrCodeImg = document.getElementById('qrCodeImg');
+    const qrPlaceholder = document.getElementById('qrPlaceholder');
+
+    // Initialize App on Page Load
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      setupDragAndDrop();
+      
+      // Parse room code from URL query string if scanned via QR
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlCode = urlParams.get('code');
+
+      if (urlCode) {
+        switchMode('send');
+        document.getElementById('connectCodeInput').value = urlCode.toUpperCase();
+        setTimeout(() => connectToHost(), 600);
+      } else {
+        initReceiverPeer();
+      }
+    });
+
+    // Generate random 4-6 character alphanumeric code
+    function generateCode() {
+      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // Exclude ambiguous chars like 0, O, 1, I
+      let code = '';
+      for (let i = 0; i < 4; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    }
+
+    // Initialize PeerJS as Receiver/Host
+    function initReceiverPeer() {
+      currentRoomCode = generateCode();
+      const peerId = PEER_PREFIX + currentRoomCode;
+
+      updateStatus('connecting', 'Initializing Room...');
+      roomCodeDisplay.innerText = currentRoomCode;
+      
+      updateQRCode(currentRoomCode);
+
+      if (peer) peer.destroy();
+
+      peer = new Peer(peerId, {
+        debug: 1
+      });
+
+      peer.on('open', (id) => {
+        updateStatus('ready', 'Ready for incoming images');
+      });
+
+      peer.on('connection', (conn) => {
+        activeConn = conn;
+        setupConnectionListeners(conn);
+        updateStatus('connected', 'Connected to Sender!');
+        showToast('Device connected successfully!', 'success');
+      });
+
+      peer.on('error', (err) => {
+        console.error('PeerJS Receiver Error:', err);
+        if (err.type === 'unavailable-id') {
+          // If code collision, try another
+          initReceiverPeer();
+        } else {
+          updateStatus('error', 'Connection Error');
+          showToast('Peer connection error: ' + err.type, 'error');
+        }
+      });
+    }
+
+    // Generate QR Code URL via public QuickChart API
+    function updateQRCode(code) {
+      qrCodeImg.classList.add('hidden');
+      qrPlaceholder.classList.remove('hidden');
+
+      const fullConnectUrl = `${window.location.origin}${window.location.pathname}?code=${code}`;
+      const qrApiUrl = `https://quickchart.io/qr?text=${encodeURIComponent(fullConnectUrl)}&size=300&margin=1`;
+
+      qrCodeImg.onload = () => {
+        qrPlaceholder.classList.add('hidden');
+        qrCodeImg.classList.remove('hidden');
+      };
+      qrCodeImg.src = qrApiUrl;
+    }
+
+    // Switch View Modes (Receive vs Send)
+    function switchMode(mode) {
+      currentMode = mode;
+      const receiveSection = document.getElementById('receiveSection');
+      const sendSection = document.getElementById('sendSection');
+      const tabReceiveBtn = document.getElementById('tabReceiveBtn');
+      const tabSendBtn = document.getElementById('tabSendBtn');
+
+      if (mode === 'receive') {
+        receiveSection.classList.remove('hidden');
+        sendSection.classList.add('hidden');
+        tabReceiveBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-600 text-white shadow-md';
+        tabSendBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200';
+        
+        if (!peer || peer.destroyed) {
+          initReceiverPeer();
+        } else {
+          updateStatus('ready', 'Ready for incoming images');
+        }
+      } else {
+        receiveSection.classList.add('hidden');
+        sendSection.classList.remove('hidden');
+        tabSendBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-600 text-white shadow-md';
+        tabReceiveBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200';
+        
+        if (!activeConn) {
+          updateStatus('disconnected', 'Disconnected');
+        }
+      }
+    }
+
+    // Connect to Receiver Host from Sender Mode
+    function connectToHost() {
+      const codeInput = document.getElementById('connectCodeInput').value.trim().toUpperCase();
+      if (!codeInput || codeInput.length < 3) {
+        showToast('Please enter a valid room code', 'error');
+        return;
+      }
+
+      updateStatus('connecting', 'Connecting to code: ' + codeInput + '...');
+
+      if (peer) peer.destroy();
+
+      // Create sender peer with random ID
+      peer = new Peer({ debug: 1 });
+
+      peer.on('open', () => {
+        const targetPeerId = PEER_PREFIX + codeInput;
+        activeConn = peer.connect(targetPeerId, { reliable: true });
+
+        setupConnectionListeners(activeConn);
+      });
+
+      peer.on('error', (err) => {
+        console.error('Sender Connection Error:', err);
+        updateStatus('error', 'Connection Failed');
+        showToast('Could not find host with code ' + codeInput, 'error');
+      });
+    }
+
+    // Handle Connection Listeners (Data, Open, Close)
+    function setupConnectionListeners(conn) {
+      conn.on('open', () => {
+        updateStatus('connected', 'Connected!');
+        showToast('Direct P2P Link Established!', 'success');
+
+        const senderUploadArea = document.getElementById('senderUploadArea');
+        const senderStatus = document.getElementById('senderConnectionStatus');
+        
+        if (senderUploadArea) {
+          senderUploadArea.classList.remove('opacity-50', 'pointer-events-none');
+        }
+        if (senderStatus) {
+          senderStatus.innerText = 'Connected';
+          senderStatus.className = 'text-xs text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-800/60 font-medium';
+        }
+      });
+
+      conn.on('data', (data) => {
+        // Received data packet
+        if (data.type === 'IMAGE_TRANSFER') {
+          handleIncomingImage(data);
+        }
+      });
+
+      conn.on('close', () => {
+        updateStatus('disconnected', 'Peer Disconnected');
+        showToast('Peer connection closed', 'error');
+        disableSenderArea();
+      });
+
+      conn.on('error', (err) => {
+        showToast('Connection error: ' + err, 'error');
+      });
+    }
+
+    // Disable sender upload controls
+    function disableSenderArea() {
+      const senderUploadArea = document.getElementById('senderUploadArea');
+      const senderStatus = document.getElementById('senderConnectionStatus');
+      if (senderUploadArea) senderUploadArea.classList.add('opacity-50', 'pointer-events-none');
+      if (senderStatus) {
+        senderStatus.innerText = 'Disconnected';
+        senderStatus.className = 'text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800';
+      }
+    }
+
+    // Send Image Files over DataChannel
+    async function handleFileSelect(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+
+      if (!activeConn || !activeConn.open) {
+        showToast('Not connected to a receiver device!', 'error');
+        return;
+      }
+
+      const progressContainer = document.getElementById('transferProgressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const transferStatusText = document.getElementById('transferStatusText');
+      const transferPercent = document.getElementById('transferPercent');
+
+      progressContainer.classList.remove('hidden');
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) {
+          showToast(`Skipped non-image file: ${file.name}`, 'error');
+          continue;
+        }
+
+        transferStatusText.innerText = `Sending ${file.name} (${i + 1}/${files.length})...`;
+        
+        try {
+          const base64Data = await readFileAsDataURL(file, (progress) => {
+            progressBar.style.width = `${progress}%`;
+            transferPercent.innerText = `${Math.round(progress)}%`;
+          });
+
+          // Send image data object over WebRTC
+          activeConn.send({
+            type: 'IMAGE_TRANSFER',
+            name: file.name,
+            size: file.size,
+            mimeType: file.type,
+            data: base64Data,
+            timestamp: new Date().toLocaleTimeString()
+          });
+
+          showToast(`Sent ${file.name} successfully!`, 'success');
+        } catch (err) {
+          console.error('File read error:', err);
+          showToast(`Failed to send ${file.name}`, 'error');
+        }
+      }
+
+      setTimeout(() => {
+        progressContainer.classList.add('hidden');
+        progressBar.style.width = '0%';
+      }, 1500);
+
+      // Reset file input
+      event.target.value = '';
+    }
+
+    // Read file with FileReader and report progress
+    function readFileAsDataURL(file, onProgress) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) {
+            onProgress((e.loaded / e.total) * 100);
+          }
+        };
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (error) => reject(error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Handle Received Image in Gallery
+    function handleIncomingImage(item) {
+      receivedImages.unshift(item);
+      renderGallery();
+      showToast(`Received new image: ${item.name}`, 'success');
+    }
+
+    // Render Gallery Images Grid
+    function renderGallery() {
+      const galleryGrid = document.getElementById('galleryGrid');
+      const galleryEmptyState = document.getElementById('galleryEmptyState');
+      const imageCountBadge = document.getElementById('imageCountBadge');
+      const clearGalleryBtn = document.getElementById('clearGalleryBtn');
+
+      imageCountBadge.innerText = receivedImages.length;
+
+      if (receivedImages.length === 0) {
+        galleryEmptyState.classList.remove('hidden');
+        galleryGrid.innerHTML = '';
+        clearGalleryBtn.classList.add('hidden');
+        return;
+      }
+
+      galleryEmptyState.classList.add('hidden');
+      clearGalleryBtn.classList.remove('hidden');
+      galleryGrid.innerHTML = '';
+
+      receivedImages.forEach((img, idx) => {
+        const card = document.createElement('div');
+        card.className = 'group relative aspect-square bg-slate-950/60 rounded-xl overflow-hidden border border-slate-800 shadow-md flex flex-col justify-between hover:border-brand-500/50 transition duration-200';
+
+        card.innerHTML = `
+          <img src="${img.data}" alt="${img.name}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105 cursor-pointer" onclick="openModal('${img.data}', '${img.name}', '${img.timestamp}')">
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2.5 pointer-events-none">
+            <p class="text-xs font-medium text-white truncate">${img.name}</p>
+            <p class="text-[10px] text-slate-400">${img.timestamp}</p>
+          </div>
+          <div class="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <a href="${img.data}" download="${img.name}" title="Download Image" class="p-1.5 bg-slate-900/80 hover:bg-brand-600 text-white rounded-lg backdrop-blur-md transition border border-slate-700/80">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            </a>
+          </div>
+        `;
+
+        galleryGrid.appendChild(card);
+      });
+
+      lucide.createIcons();
+    }
+
+    // Clear Image Gallery
+    function clearGallery() {
+      if (confirm('Are you sure you want to clear all received images?')) {
+        receivedImages = [];
+        renderGallery();
+      }
+    }
+
+    // Drag and Drop Helper Setup
+    function setupDragAndDrop() {
+      const dropZone = document.getElementById('dropZone');
+      if (!dropZone) return;
+
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }, false);
+      });
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+          dropZone.classList.add('border-brand-500', 'bg-slate-950/80');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+          dropZone.classList.remove('border-brand-500', 'bg-slate-950/80');
+        }, false);
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFileSelect({ target: { files: files } });
+      }, false);
+    }
+
+    // Camera Trigger
+    function triggerCamera() {
+      document.getElementById('cameraInput').click();
+    }
+
+    // Copy Code Helper
+    function copyRoomCode() {
+      if (!currentRoomCode) return;
+      
+      const el = document.createElement('textarea');
+      el.value = currentRoomCode;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+
+      showToast('Room Code copied to clipboard!', 'success');
+    }
+
+    // Generate New Code / Refresh Peer
+    function generateNewRoom() {
+      if (confirm('Generate new room code? Active connections will disconnect.')) {
+        initReceiverPeer();
+      }
+    }
+
+    // Fullscreen Image Modal Controls
+    function openModal(dataUrl, name, timestamp) {
+      const modal = document.getElementById('imageModal');
+      const modalImg = document.getElementById('modalImage');
+      const modalDl = document.getElementById('modalDownloadBtn');
+      const caption = document.getElementById('modalCaption');
+
+      modalImg.src = dataUrl;
+      modalDl.href = dataUrl;
+      modalDl.download = name || 'received_image.png';
+      caption.innerText = `${name || 'Image'} • Received at ${timestamp || 'now'}`;
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('imageModal').classList.add('hidden');
+    }
+
+    // UI Status Indicator Update
+    function updateStatus(state, message) {
+      statusText.innerText = message;
+      
+      if (state === 'ready') {
+        statusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
+        statusBadge.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-emerald-500/30 text-emerald-300';
+      } else if (state === 'connected') {
+        statusDot.className = 'w-2.5 h-2.5 rounded-full bg-brand-400';
+        statusBadge.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-brand-500/40 text-brand-300';
+      } else if (state === 'connecting') {
+        statusDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping';
+        statusBadge.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-amber-500/30 text-amber-300';
+      } else {
+        statusDot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
+        statusBadge.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-slate-700 text-slate-400';
+      }
+    }
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info';
+      const bgColor = type === 'success' ? 'bg-emerald-950/90 border-emerald-700/80 text-emerald-200' : type === 'error' ? 'bg-red-950/90 border-red-700/80 text-red-200' : 'bg-slate-900/90 border-slate-700 text-slate-200';
+
+      toast.className = `pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-md text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${bgColor}`;
+      
+      toast.innerHTML = `
+        <i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i>
+        <span>${message}</span>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      // Animate In
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      // Remove after 3 seconds
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+  </script>
+</body>
+</html>
