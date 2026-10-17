@@ -1,17 +1,24 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<html lang="en" class="h-full bg-[#07090e] text-slate-100 antialiased dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FlashShare - Instant P2P Image Transfer</title>
+  <title>FLASHSHARE</title>
   
+  <!-- Dynamic SVG Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>">
+
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- PeerJS WebRTC CDN -->
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- jsQR Code Camera Scanner -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -19,723 +26,1334 @@
         extend: {
           colors: {
             brand: {
-              50: '#f0f9ff',
-              100: '#e0f2fe',
-              500: '#0ea5e9',
-              600: '#0284c7',
-              700: '#0369a1',
+              50: '#ecfeff',
+              100: '#cffaff',
+              400: '#22d3ee',
+              500: '#06b6d4',
+              600: '#0891b2',
+              700: '#0e7490',
+            },
+            accent: {
+              500: '#8b5cf6',
+              600: '#7c3aed',
             }
           },
           animation: {
-            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'blob-float-1': 'float1 14s infinite alternate ease-in-out',
+            'blob-float-2': 'float2 18s infinite alternate ease-in-out',
+            'pulse-subtle': 'pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            float1: {
+              '0%': { transform: 'translate(0px, 0px) scale(1)' },
+              '100%': { transform: 'translate(60px, 80px) scale(1.15)' },
+            },
+            float2: {
+              '0%': { transform: 'translate(0px, 0px) scale(1)' },
+              '100%': { transform: 'translate(-50px, -60px) scale(1.2)' },
+            }
           }
         }
       }
     }
   </script>
+
   <style>
-    /* Glassmorphism Styles */
-    .glass-card {
-      background: rgba(30, 41, 59, 0.7);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+    /* Glassmorphism Classes */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
     }
     .glass-input {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(8, 14, 26, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      transition: all 0.2s ease;
     }
     .glass-input:focus {
-      border-color: #0ea5e9;
+      border-color: #06b6d4;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
       outline: none;
-      box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.25);
     }
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.5);
-    }
-    ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.3);
+    .message-hover:hover .msg-actions {
+      opacity: 1;
     }
   </style>
 </head>
-<body class="h-full flex flex-col font-sans antialiased bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 selection:bg-brand-500 selection:text-white">
+<body class="h-full flex flex-col font-sans bg-[#07090e] text-slate-100 overflow-hidden select-none">
 
-  <!-- Main Container -->
-  <div class="flex-1 flex flex-col max-w-5xl w-full mx-auto p-4 md:p-6 lg:p-8">
-    
-    <!-- Top Header -->
-    <header class="flex items-center justify-between pb-6 border-b border-slate-800 mb-6">
+  <!-- Ambient Animated Background Glowing Blobs -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div class="absolute -top-32 -left-32 w-96 h-96 bg-brand-500/15 rounded-full blur-3xl animate-blob-float-1"></div>
+    <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-accent-500/15 rounded-full blur-3xl animate-blob-float-2"></div>
+  </div>
+
+  <!-- App Main Wrapper -->
+  <div class="relative z-10 flex-1 flex flex-col h-full max-w-[1600px] w-full mx-auto p-2 sm:p-4 lg:p-6">
+
+    <!-- Top Navigation Header -->
+    <header class="glass-panel rounded-2xl px-4 py-3 mb-3 flex items-center justify-between shrink-0 shadow-2xl">
+      <!-- App Brand Logo -->
       <div class="flex items-center space-x-3">
-        <div class="p-2.5 bg-gradient-to-tr from-brand-600 to-indigo-500 rounded-xl shadow-lg shadow-brand-500/20">
+        <div class="p-2.5 bg-gradient-to-tr from-brand-600 via-brand-500 to-accent-500 rounded-xl shadow-lg shadow-brand-500/30 flex items-center justify-center">
           <i data-lucide="zap" class="w-6 h-6 text-white"></i>
         </div>
         <div>
-          <h1 class="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">FlashShare</h1>
-          <p class="text-xs text-slate-400 hidden sm:block">Direct P2P Cross-Device Image Transfer</p>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent">FLASHSHARE</h1>
+            <span class="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">P2P v2.0</span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Direct Encrypted P2P Cross-Device Messenger</p>
         </div>
       </div>
-      
-      <!-- Connection Status Badge -->
-      <div id="statusBadge" class="flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-slate-700/50">
-        <span id="statusDot" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-        <span id="statusText" class="text-slate-300">Initializing...</span>
+
+      <!-- User Profile & Action Controls -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <!-- My FLASH ID Badge -->
+        <div onclick="openMyQRModal()" class="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/60 hover:border-brand-500/60 transition cursor-pointer group">
+          <div id="myAvatarDisplay" class="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center text-white font-bold text-xs uppercase shadow-inner">
+            ?
+          </div>
+          <div class="text-left hidden md:block">
+            <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Your FLASH ID</p>
+            <p id="myFlashIdDisplay" class="font-mono text-xs font-bold text-brand-400 group-hover:text-white transition">FLASH------</p>
+          </div>
+          <i data-lucide="qr-code" class="w-4 h-4 text-slate-400 group-hover:text-brand-400 transition"></i>
+        </div>
+
+        <!-- Camera Scanner Button -->
+        <button onclick="openCameraScannerModal()" class="p-2.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 border border-brand-500/30 hover:border-brand-500 transition flex items-center space-x-1.5 text-xs font-semibold" title="Scan Friend's QR Code">
+          <i data-lucide="camera" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Scan QR</span>
+        </button>
+
+        <!-- Edit Profile Button -->
+        <button onclick="openProfileModal()" class="p-2.5 rounded-xl glass-panel hover:bg-slate-800/80 text-slate-300 hover:text-white transition" title="Edit Profile">
+          <i data-lucide="user-cog" class="w-4 h-4"></i>
+        </button>
       </div>
     </header>
 
-    <!-- Navigation Tabs -->
-    <div class="flex p-1 bg-slate-900/80 rounded-xl mb-6 border border-slate-800 max-w-md mx-auto w-full">
-      <button id="tabReceiveBtn" onclick="switchMode('receive')" class="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-600 text-white shadow-md">
-        <i data-lucide="download" class="w-4 h-4"></i>
-        <span>Receive Images</span>
-      </button>
-      <button id="tabSendBtn" onclick="switchMode('send')" class="flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200">
-        <i data-lucide="send" class="w-4 h-4"></i>
-        <span>Send Images</span>
-      </button>
-    </div>
+    <!-- Main Workspace (Sidebar + Active Chat Window) -->
+    <div class="flex-1 flex space-x-3 min-h-0 overflow-hidden">
 
-    <!-- Main Dynamic Content Area -->
-    <main class="flex-1 flex flex-col">
-      
-      <!-- RECEIVE / HOST MODE -->
-      <div id="receiveSection" class="flex-1 flex flex-col space-y-6">
+      <!-- LEFT SIDEBAR: Active Chats & Contacts -->
+      <aside id="sidebar" class="w-full md:w-80 lg:w-96 glass-panel rounded-2xl flex flex-col shrink-0 shadow-2xl transition-all duration-300 overflow-hidden z-20">
         
-        <!-- Code & QR Info Banner -->
-        <div class="glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            
-            <!-- Code Display Area -->
-            <div class="space-y-4">
-              <div>
-                <span class="text-xs uppercase tracking-wider font-semibold text-brand-500">Device Room Code</span>
-                <h2 class="text-slate-200 text-sm">Scan QR or enter this code on the sending device:</h2>
-              </div>
-              
-              <div class="flex items-center space-x-3">
-                <div id="roomCodeDisplay" class="text-3xl sm:text-4xl font-mono font-bold tracking-widest text-white bg-slate-950/80 px-5 py-3 rounded-xl border border-slate-700/80 shadow-inner flex-1 text-center select-all">
-                  ----
-                </div>
-                <button onclick="copyRoomCode()" title="Copy Code" class="p-3.5 glass-card hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition border border-slate-700">
-                  <i data-lucide="copy" class="w-5 h-5"></i>
-                </button>
-                <button onclick="generateNewRoom()" title="Generate New Code" class="p-3.5 glass-card hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl transition border border-slate-700">
-                  <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-                </button>
-              </div>
-
-              <div class="flex items-center space-x-2 text-xs text-slate-400">
-                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
-                <span>Direct end-to-end WebRTC connection. No server storage.</span>
-              </div>
-            </div>
-
-            <!-- QR Code Display Area -->
-            <div class="flex flex-col items-center justify-center p-4 bg-slate-950/40 rounded-xl border border-slate-800/80">
-              <div class="relative group bg-white p-2.5 rounded-xl shadow-lg">
-                <img id="qrCodeImg" src="" alt="Room QR Code" class="w-36 h-36 object-contain hidden" />
-                <div id="qrPlaceholder" class="w-36 h-36 flex flex-col items-center justify-center text-slate-500 space-y-2">
-                  <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-brand-500"></i>
-                  <span class="text-xs">Generating QR...</span>
-                </div>
-              </div>
-              <p class="text-xs text-slate-400 mt-2">Scan with camera to open & connect instantly</p>
-            </div>
-
-          </div>
-        </div>
-
-        <!-- Live Received Images Gallery -->
-        <div class="flex-1 glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80 flex flex-col">
-          <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+        <!-- Sidebar Top Header & Add Chat Button -->
+        <div class="p-3.5 border-b border-slate-800/80 space-y-3 shrink-0">
+          <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
-              <i data-lucide="image" class="w-5 h-5 text-brand-500"></i>
-              <h3 class="font-semibold text-slate-200">Received Gallery</h3>
-              <span id="imageCountBadge" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">0</span>
+              <i data-lucide="message-square" class="w-4 h-4 text-brand-400"></i>
+              <h2 class="font-bold text-sm tracking-wide text-slate-200">Conversations</h2>
+              <span id="chatCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">0</span>
             </div>
-            
-            <button id="clearGalleryBtn" onclick="clearGallery()" class="hidden text-xs text-slate-400 hover:text-red-400 flex items-center space-x-1 transition">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              <span>Clear Gallery</span>
+            <button onclick="openNewChatModal()" class="p-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold transition flex items-center space-x-1 text-xs shadow-lg shadow-brand-500/20">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>New Chat</span>
             </button>
           </div>
 
-          <!-- Gallery Empty State -->
-          <div id="galleryEmptyState" class="flex-1 flex flex-col items-center justify-center py-12 text-slate-500 space-y-3">
-            <div class="p-4 rounded-full bg-slate-900 border border-slate-800">
-              <i data-lucide="inbox" class="w-10 h-10 text-slate-600"></i>
-            </div>
-            <p class="text-sm font-medium">No images received yet</p>
-            <p class="text-xs text-slate-600 text-center max-w-sm">Connect from another device using the room code above and start sending photos!</p>
+          <!-- Contact Search Bar -->
+          <div class="relative">
+            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
+            <input id="searchInput" type="text" oninput="filterContacts()" placeholder="Search contacts or nicknames..." class="w-full text-xs pl-9 pr-3 py-2 rounded-xl glass-input text-slate-200 placeholder-slate-500">
           </div>
-
-          <!-- Image Grid -->
-          <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto max-h-[500px] pr-1"></div>
         </div>
 
-      </div>
+        <!-- Sidebar Chats List -->
+        <div id="chatsList" class="flex-1 overflow-y-auto p-2 space-y-1">
+          <!-- Populated dynamically via JavaScript -->
+        </div>
 
-      <!-- SEND / CONNECT MODE -->
-      <div id="sendSection" class="hidden flex-1 flex flex-col space-y-6">
+      </aside>
+
+      <!-- RIGHT PANEL: Active Chat Conversation Window -->
+      <main id="chatWindow" class="flex-1 glass-panel rounded-2xl flex flex-col shrink min-w-0 shadow-2xl relative overflow-hidden">
         
-        <!-- Code Connection Box -->
-        <div class="glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80">
-          <h2 class="text-lg font-semibold text-slate-200 mb-2">Connect to Receiver</h2>
-          <p class="text-xs text-slate-400 mb-4">Enter the 4-6 digit room code shown on the receiving device:</p>
-          
-          <div class="flex flex-col sm:flex-row gap-3">
-            <div class="relative flex-1">
-              <input id="connectCodeInput" type="text" maxlength="8" placeholder="Enter Room Code (e.g. A7K9)" class="w-full uppercase font-mono tracking-widest text-lg px-4 py-3 rounded-xl glass-input text-white placeholder-slate-600">
+        <!-- Empty State (When no chat is selected) -->
+        <div id="emptyChatState" class="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500 space-y-4">
+          <div class="p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl relative">
+            <i data-lucide="messages-square" class="w-16 h-16 text-slate-600"></i>
+            <div class="absolute -bottom-1 -right-1 p-2 bg-brand-500 rounded-full text-slate-950 shadow-lg">
+              <i data-lucide="zap" class="w-4 h-4"></i>
             </div>
-            <button id="connectBtn" onclick="connectToHost()" class="px-6 py-3 bg-brand-600 hover:bg-brand-500 font-medium text-white rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-brand-600/20">
-              <i data-lucide="link" class="w-5 h-5"></i>
-              <span>Connect</span>
-            </button>
           </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-300">No Chat Selected</h3>
+            <p class="text-xs text-slate-500 max-w-sm mt-1">Select an active contact from the sidebar or click "New Chat" to connect via FLASH ID or QR Code.</p>
+          </div>
+          <button onclick="openNewChatModal()" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition shadow-lg shadow-brand-600/20 flex items-center space-x-2">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span>Start a New Conversation</span>
+          </button>
         </div>
 
-        <!-- Transfer / Upload Area -->
-        <div id="senderUploadArea" class="opacity-50 pointer-events-none transition-all duration-300 flex-1 glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80 flex flex-col">
+        <!-- Active Chat Interface -->
+        <div id="activeChatInterface" class="flex-1 flex flex-col min-h-0 hidden">
           
-          <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-6">
-            <h3 class="font-semibold text-slate-200 flex items-center space-x-2">
-              <i data-lucide="upload-cloud" class="w-5 h-5 text-brand-500"></i>
-              <span>Send Files</span>
-            </h3>
-            <span id="senderConnectionStatus" class="text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">Disconnected</span>
-          </div>
+          <!-- Chat Header Bar -->
+          <div class="px-4 py-3 border-b border-slate-800/80 flex items-center justify-between shrink-0 bg-slate-900/40 backdrop-blur-md">
+            <div class="flex items-center space-x-3 min-w-0">
+              <!-- Mobile Back Button -->
+              <button onclick="closeChatMobile()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white bg-slate-800/60">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+              </button>
 
-          <!-- Drag and Drop Zone -->
-          <div id="dropZone" onclick="document.getElementById('fileInput').click()" class="flex-1 min-h-[220px] border-2 border-dashed border-slate-700 hover:border-brand-500/80 rounded-2xl flex flex-col items-center justify-center p-6 text-center cursor-pointer transition bg-slate-950/30 hover:bg-slate-950/50 group">
-            <input id="fileInput" type="file" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
-            
-            <div class="p-4 rounded-full bg-slate-900 group-hover:scale-110 transition duration-300 border border-slate-800 mb-3">
-              <i data-lucide="image-plus" class="w-8 h-8 text-brand-500"></i>
+              <div id="activePeerAvatar" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-600 to-brand-500 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-inner">
+                ?
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center space-x-2">
+                  <h3 id="activePeerName" class="font-bold text-sm text-slate-100 truncate">Contact Name</h3>
+                  <button onclick="openNicknameModal()" title="Edit Custom Nickname" class="text-slate-400 hover:text-brand-400 transition">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+                <div class="flex items-center space-x-2 text-[11px]">
+                  <span id="activePeerId" class="font-mono text-slate-400 truncate">FLASH-XXXXX</span>
+                  <span class="text-slate-600">•</span>
+                  <span id="activeConnectionStatus" class="flex items-center space-x-1 font-medium text-slate-400">
+                    <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                    <span>Disconnected</span>
+                  </span>
+                </div>
+              </div>
             </div>
-            <p class="text-sm font-medium text-slate-300 mb-1">Click to browse or drop images here</p>
-            <p class="text-xs text-slate-500">Supports PNG, JPG, WEBP, GIF, SVG</p>
 
-            <div class="mt-4 flex items-center space-x-3">
-              <button onclick="event.stopPropagation(); triggerCamera()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 flex items-center space-x-1.5 transition">
-                <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-                <span>Use Camera</span>
+            <!-- Chat Actions Menu -->
+            <div class="flex items-center space-x-1 sm:space-x-2 shrink-0">
+              <!-- Reconnect Button -->
+              <button onclick="reconnectActivePeer()" title="Force WebRTC Reconnect" class="p-2 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/60 transition">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              </button>
+              <!-- One-Way Clear Chat History Button -->
+              <button onclick="confirmClearActiveChatHistory()" title="Clear Chat History (One-Way / Local Only)" class="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-800/60 transition">
+                <i data-lucide="eraser" class="w-4 h-4"></i>
+              </button>
+              <!-- Delete Contact Button -->
+              <button onclick="confirmDeleteActiveContact()" title="Remove Contact from Sidebar" class="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800/60 transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
               </button>
             </div>
           </div>
 
-          <!-- Camera Hidden File Input -->
-          <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+          <!-- Messages Stream Container -->
+          <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+            <!-- Dynamic Message Bubbles appended here -->
+          </div>
 
-          <!-- Transfer Progress & Queue -->
-          <div id="transferProgressContainer" class="mt-6 space-y-3 hidden">
-            <div class="flex justify-between items-center text-xs">
-              <span id="transferStatusText" class="text-slate-300 font-medium">Sending image...</span>
-              <span id="transferPercent" class="text-brand-400 font-mono">0%</span>
+          <!-- Drag and Drop Overlay Indicator -->
+          <div id="dropOverlay" class="absolute inset-0 bg-brand-950/80 backdrop-blur-md border-2 border-dashed border-brand-400 z-30 hidden flex flex-col items-center justify-center space-y-3 text-brand-300 pointer-events-none">
+            <i data-lucide="upload-cloud" class="w-12 h-12 animate-bounce text-brand-400"></i>
+            <p class="font-bold text-base">Drop files here to send directly</p>
+          </div>
+
+          <!-- Voice Recording Bar -->
+          <div id="voiceRecordingBar" class="px-4 py-2 bg-red-950/60 border-t border-red-800/60 flex items-center justify-between hidden">
+            <div class="flex items-center space-x-3 text-xs font-semibold text-red-300">
+              <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
+              <span>Recording Voice Note...</span>
+              <span id="voiceTimer" class="font-mono text-white">00:00</span>
             </div>
-            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
-              <div id="progressBar" class="bg-gradient-to-r from-brand-600 to-indigo-500 h-2 rounded-full transition-all duration-150 w-0"></div>
+            <div class="flex items-center space-x-2">
+              <button onclick="cancelVoiceRecording()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700">Cancel</button>
+              <button onclick="stopAndSendVoiceNote()" class="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-500 flex items-center space-x-1">
+                <i data-lucide="send" class="w-3 h-3"></i>
+                <span>Send Voice Note</span>
+              </button>
             </div>
+          </div>
+
+          <!-- Chat Input Bar -->
+          <div class="p-3 border-t border-slate-800/80 bg-slate-900/60 backdrop-blur-md">
+            <form onsubmit="handleSendMessage(event)" class="flex items-center space-x-2">
+              
+              <!-- File Attachment Controls -->
+              <div class="flex items-center space-x-1">
+                <!-- Gallery File Picker -->
+                <button type="button" onclick="document.getElementById('fileInput').click()" class="p-2.5 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/80 transition" title="Send Image or File from Gallery">
+                  <i data-lucide="image-plus" class="w-5 h-5"></i>
+                </button>
+                <input id="fileInput" type="file" accept="image/*,video/*,audio/*,application/pdf" multiple class="hidden" onchange="handleFileSelect(event)">
+
+                <!-- Mobile Camera Trigger -->
+                <button type="button" onclick="document.getElementById('cameraInput').click()" class="p-2.5 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/80 transition hidden sm:flex" title="Take Photo with Camera">
+                  <i data-lucide="camera" class="w-5 h-5"></i>
+                </button>
+                <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
+
+                <!-- Voice Note Trigger -->
+                <button type="button" onclick="toggleVoiceRecording()" class="p-2.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800/80 transition" title="Record Voice Note">
+                  <i data-lucide="mic" class="w-5 h-5"></i>
+                </button>
+              </div>
+
+              <!-- Message Input Textarea -->
+              <input id="messageInput" type="text" placeholder="Type a message or paste images (Ctrl+V)..." autocomplete="off" class="flex-1 glass-input px-4 py-2.5 rounded-xl text-xs sm:text-sm text-slate-100 placeholder-slate-500">
+
+              <!-- Send Button -->
+              <button type="submit" class="p-2.5 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-slate-950 font-bold transition shadow-lg shadow-brand-500/20 shrink-0">
+                <i data-lucide="send" class="w-5 h-5"></i>
+              </button>
+            </form>
           </div>
 
         </div>
 
-      </div>
+      </main>
 
-    </main>
+    </div>
 
   </div>
 
-  <!-- Fullscreen Image Preview Modal -->
-  <div id="imageModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-4">
-    <div class="absolute top-4 right-4 flex items-center space-x-3">
-      <a id="modalDownloadBtn" download="transferred_image.png" href="#" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl border border-slate-700 transition flex items-center space-x-2 text-xs font-medium">
+  <!-- ==================== MODAL DIALOGS ==================== -->
+
+  <!-- Modal 1: My FLASH ID & QR Code Modal -->
+  <div id="myQRModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-center space-y-5 shadow-2xl relative border border-slate-800">
+      
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <h3 class="font-bold text-slate-200 text-base">Your Personal FLASH ID</h3>
+        <button onclick="closeMyQRModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- QR Code Wrapper -->
+      <div class="flex flex-col items-center justify-center space-y-3">
+        <div class="p-4 bg-white rounded-2xl shadow-xl inline-block" id="qrcodeCanvas"></div>
+        <p class="text-xs text-slate-400">Scan with another device camera to connect instantly</p>
+      </div>
+
+      <!-- Flash ID Copy Box -->
+      <div class="flex items-center space-x-2 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+        <span id="modalFlashIdText" class="flex-1 font-mono text-brand-400 font-bold text-sm tracking-wider select-all">FLASH-XXXXX</span>
+        <button onclick="copyMyFlashID()" class="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition">
+          Copy ID
+        </button>
+      </div>
+
+      <!-- Hide QR Button -->
+      <button onclick="closeMyQRModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition border border-slate-700">
+        Hide QR Code
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal 2: Camera QR Reader Scanner -->
+  <div id="cameraScannerModal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-3xl p-6 space-y-4 text-center shadow-2xl border border-slate-800 relative">
+      
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <div class="flex items-center space-x-2">
+          <i data-lucide="camera" class="w-5 h-5 text-brand-400"></i>
+          <h3 class="font-bold text-slate-200 text-base">Scan Friend's QR Code</h3>
+        </div>
+        <button onclick="closeCameraScannerModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Video Feed & Scanner Overlay -->
+      <div class="relative w-full aspect-square bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 flex items-center justify-center">
+        <video id="qrVideo" class="w-full h-full object-cover"></video>
+        <canvas id="qrCanvas" class="hidden"></canvas>
+        <div class="absolute inset-0 border-2 border-dashed border-brand-400/70 rounded-2xl pointer-events-none m-8 animate-pulse-subtle"></div>
+      </div>
+
+      <p id="scannerStatus" class="text-xs text-slate-400">Position the QR code inside the frame to scan</p>
+
+      <button onclick="closeCameraScannerModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+        Cancel Scan
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal 3: Start New Chat by FLASH ID -->
+  <div id="newChatModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-800">
+      
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-slate-200 text-base">Connect to a Peer</h3>
+        <button onclick="closeNewChatModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Enter Contact FLASH ID</label>
+          <input id="newPeerIdInput" type="text" placeholder="e.g. FLASH-K82M1" class="w-full font-mono text-sm px-4 py-2.5 rounded-xl glass-input uppercase text-white placeholder-slate-600">
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Custom Nickname (Optional)</label>
+          <input id="newPeerNicknameInput" type="text" placeholder="e.g. Mom, Bestie, Work Laptop" class="w-full text-xs px-4 py-2.5 rounded-xl glass-input text-white placeholder-slate-600">
+        </div>
+      </div>
+
+      <div class="flex space-x-2 pt-2">
+        <button onclick="closeNewChatModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Cancel</button>
+        <button onclick="startNewChatFromModal()" class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-brand-500/20">Connect</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Edit Custom Nickname -->
+  <div id="nicknameModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-800">
+      
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-slate-200 text-base">Edit Custom Nickname</h3>
+        <button onclick="closeNicknameModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400">Set a personal nickname so you easily recognize this contact in your sidebar.</p>
+
+      <input id="editNicknameInput" type="text" placeholder="Enter nickname..." class="w-full text-xs px-4 py-2.5 rounded-xl glass-input text-white">
+
+      <div class="flex space-x-2">
+        <button onclick="saveNickname()" class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition">Save Nickname</button>
+        <button onclick="removeNickname()" class="px-4 py-2.5 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 text-xs font-semibold transition border border-red-800">Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Edit Profile Modal -->
+  <div id="profileModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-sm rounded-3xl p-6 space-y-4 shadow-2xl border border-slate-800">
+      
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <h3 class="font-bold text-slate-200 text-base">Your Profile Settings</h3>
+        <button onclick="closeProfileModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Display Name</label>
+          <input id="profileDisplayNameInput" type="text" class="w-full text-xs px-4 py-2.5 rounded-xl glass-input text-white">
+        </div>
+
+        <div>
+          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Your Persistent FLASH ID</label>
+          <input id="profileFlashIdReadonly" type="text" readonly class="w-full font-mono text-xs px-4 py-2.5 rounded-xl glass-input bg-slate-900/90 text-brand-400 cursor-not-allowed">
+        </div>
+      </div>
+
+      <button onclick="saveProfileSettings()" class="w-full py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition">
+        Save Profile
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal 6: Fullscreen Image Lightbox Preview -->
+  <div id="lightboxModal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4">
+    <div class="absolute top-4 right-4 flex items-center space-x-2">
+      <a id="lightboxDownloadBtn" download="flashshare_image.png" href="#" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition flex items-center space-x-2 text-xs font-semibold">
         <i data-lucide="download" class="w-4 h-4"></i>
         <span>Download</span>
       </a>
-      <button onclick="closeModal()" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl border border-slate-700 transition">
+      <button onclick="closeLightboxModal()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
     </div>
-    
-    <div class="max-w-4xl max-h-[85vh] w-full flex items-center justify-center p-2">
-      <img id="modalImage" src="" alt="Preview" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl border border-slate-800">
+
+    <div class="max-w-5xl max-h-[85vh] w-full flex items-center justify-center p-2">
+      <img id="lightboxImage" src="" alt="Preview" class="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-slate-800">
     </div>
     
-    <div id="modalCaption" class="mt-3 text-xs font-mono text-slate-400"></div>
+    <p id="lightboxCaption" class="mt-3 text-xs font-mono text-slate-400"></p>
   </div>
 
-  <!-- Notification Toast Container -->
+  <!-- Toast Notifications Container -->
   <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
   <!-- Application Logic JavaScript -->
   <script>
-    // Global Application State
+    // Global State
+    const PEER_PREFIX = 'FLASHSHARE-ROOM-V2-';
+    let myFlashId = '';
+    let myDisplayName = 'Anonymous Peer';
     let peer = null;
-    let activeConn = null;
-    let currentMode = 'receive'; // 'receive' | 'send'
-    let currentRoomCode = '';
-    let receivedImages = [];
-    const PEER_PREFIX = 'flashshare-p2p-v1-';
 
-    // UI Elements
-    const statusBadge = document.getElementById('statusBadge');
-    const statusDot = document.getElementById('statusDot');
-    const statusText = document.getElementById('statusText');
-    const roomCodeDisplay = document.getElementById('roomCodeDisplay');
-    const qrCodeImg = document.getElementById('qrCodeImg');
-    const qrPlaceholder = document.getElementById('qrPlaceholder');
+    let contacts = {}; // Format: { [peerId]: { nickname, lastMessage, unreadCount, isOnline } }
+    let messages = {}; // Format: { [peerId]: [ { id, sender, text, fileData, fileType, timestamp } ] }
+    let activePeerId = null;
+    let connections = {}; // Live PeerJS DataConnections
 
-    // Initialize App on Page Load
+    // Voice Recorder state
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let voiceRecordingTimer = null;
+    let voiceSeconds = 0;
+
+    // Camera Scanner state
+    let qrVideoStream = null;
+    let qrScanAnimation = null;
+
+    // Initialize App
     window.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
+      initUserSession();
+      loadStoredData();
+      initPeerJS();
       setupDragAndDrop();
-      
-      // Parse room code from URL query string if scanned via QR
+      setupPasteListener();
+      renderContactsList();
+
+      // Check URL parameters for direct QR scan room connection
       const urlParams = new URLSearchParams(window.location.search);
       const urlCode = urlParams.get('code');
-
-      if (urlCode) {
-        switchMode('send');
-        document.getElementById('connectCodeInput').value = urlCode.toUpperCase();
-        setTimeout(() => connectToHost(), 600);
-      } else {
-        initReceiverPeer();
+      if (urlCode && urlCode !== myFlashId) {
+        startNewChat(urlCode.toUpperCase());
       }
     });
 
-    // Generate random 4-6 character alphanumeric code
-    function generateCode() {
-      const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // Exclude ambiguous chars like 0, O, 1, I
-      let code = '';
-      for (let i = 0; i < 4; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    // 1. Session & Storage Management
+    function initUserSession() {
+      let storedId = localStorage.getItem('flashshare_my_id');
+      if (!storedId) {
+        const randomChar = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let suffix = '';
+        for (let i = 0; i < 5; i++) {
+          suffix += randomChar.charAt(Math.floor(Math.random() * randomChar.length));
+        }
+        storedId = 'FLASH-' + suffix;
+        localStorage.setItem('flashshare_my_id', storedId);
       }
-      return code;
+      myFlashId = storedId;
+
+      let storedName = localStorage.getItem('flashshare_my_name');
+      if (!storedName) {
+        storedName = 'User ' + myFlashId.slice(-4);
+        localStorage.setItem('flashshare_my_name', storedName);
+      }
+      myDisplayName = storedName;
+
+      // Update UI Header
+      document.getElementById('myFlashIdDisplay').innerText = myFlashId;
+      document.getElementById('myAvatarDisplay').innerText = myDisplayName.charAt(0).toUpperCase();
+      document.getElementById('modalFlashIdText').innerText = myFlashId;
+      document.getElementById('profileFlashIdReadonly').value = myFlashId;
+      document.getElementById('profileDisplayNameInput').value = myDisplayName;
     }
 
-    // Initialize PeerJS as Receiver/Host
-    function initReceiverPeer() {
-      currentRoomCode = generateCode();
-      const peerId = PEER_PREFIX + currentRoomCode;
+    function loadStoredData() {
+      const savedContacts = localStorage.getItem(`flashshare_contacts_${myFlashId}`);
+      if (savedContacts) {
+        try { contacts = JSON.parse(savedContacts); } catch (e) {}
+      }
 
-      updateStatus('connecting', 'Initializing Room...');
-      roomCodeDisplay.innerText = currentRoomCode;
-      
-      updateQRCode(currentRoomCode);
+      const savedMessages = localStorage.getItem(`flashshare_messages_${myFlashId}`);
+      if (savedMessages) {
+        try { messages = JSON.parse(savedMessages); } catch (e) {}
+      }
+    }
+
+    function persistData() {
+      localStorage.setItem(`flashshare_contacts_${myFlashId}`, JSON.stringify(contacts));
+      localStorage.setItem(`flashshare_messages_${myFlashId}`, JSON.stringify(messages));
+    }
+
+    // 2. PeerJS WebRTC Connection
+    function initPeerJS() {
+      const fullPeerId = PEER_PREFIX + myFlashId;
 
       if (peer) peer.destroy();
 
-      peer = new Peer(peerId, {
-        debug: 1
-      });
+      peer = new Peer(fullPeerId, { debug: 1 });
 
       peer.on('open', (id) => {
-        updateStatus('ready', 'Ready for incoming images');
+        showToast('FLASHSHARE Network Connected!', 'success');
       });
 
       peer.on('connection', (conn) => {
-        activeConn = conn;
-        setupConnectionListeners(conn);
-        updateStatus('connected', 'Connected to Sender!');
-        showToast('Device connected successfully!', 'success');
+        setupIncomingConnection(conn);
       });
 
       peer.on('error', (err) => {
-        console.error('PeerJS Receiver Error:', err);
+        console.warn('PeerJS Error:', err.type);
         if (err.type === 'unavailable-id') {
-          // If code collision, try another
-          initReceiverPeer();
-        } else {
-          updateStatus('error', 'Connection Error');
-          showToast('Peer connection error: ' + err.type, 'error');
+          showToast('Session conflict. Re-initializing...', 'info');
         }
       });
     }
 
-    // Generate QR Code URL via public QuickChart API
-    function updateQRCode(code) {
-      qrCodeImg.classList.add('hidden');
-      qrPlaceholder.classList.remove('hidden');
+    function connectToPeer(remoteId) {
+      if (!peer || peer.destroyed) return;
+      const fullRemoteId = PEER_PREFIX + remoteId;
 
-      const fullConnectUrl = `${window.location.origin}${window.location.pathname}?code=${code}`;
-      const qrApiUrl = `https://quickchart.io/qr?text=${encodeURIComponent(fullConnectUrl)}&size=300&margin=1`;
+      if (connections[remoteId] && connections[remoteId].open) return;
 
-      qrCodeImg.onload = () => {
-        qrPlaceholder.classList.add('hidden');
-        qrCodeImg.classList.remove('hidden');
-      };
-      qrCodeImg.src = qrApiUrl;
+      const conn = peer.connect(fullRemoteId, { reliable: true });
+      setupOutgoingConnection(conn, remoteId);
     }
 
-    // Switch View Modes (Receive vs Send)
-    function switchMode(mode) {
-      currentMode = mode;
-      const receiveSection = document.getElementById('receiveSection');
-      const sendSection = document.getElementById('sendSection');
-      const tabReceiveBtn = document.getElementById('tabReceiveBtn');
-      const tabSendBtn = document.getElementById('tabSendBtn');
+    function setupOutgoingConnection(conn, remoteId) {
+      connections[remoteId] = conn;
 
-      if (mode === 'receive') {
-        receiveSection.classList.remove('hidden');
-        sendSection.classList.add('hidden');
-        tabReceiveBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-600 text-white shadow-md';
-        tabSendBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200';
-        
-        if (!peer || peer.destroyed) {
-          initReceiverPeer();
-        } else {
-          updateStatus('ready', 'Ready for incoming images');
-        }
-      } else {
-        receiveSection.classList.add('hidden');
-        sendSection.classList.remove('hidden');
-        tabSendBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-600 text-white shadow-md';
-        tabReceiveBtn.className = 'flex-1 flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg text-sm font-medium transition-all duration-200 text-slate-400 hover:text-slate-200';
-        
-        if (!activeConn) {
-          updateStatus('disconnected', 'Disconnected');
-        }
-      }
-    }
-
-    // Connect to Receiver Host from Sender Mode
-    function connectToHost() {
-      const codeInput = document.getElementById('connectCodeInput').value.trim().toUpperCase();
-      if (!codeInput || codeInput.length < 3) {
-        showToast('Please enter a valid room code', 'error');
-        return;
-      }
-
-      updateStatus('connecting', 'Connecting to code: ' + codeInput + '...');
-
-      if (peer) peer.destroy();
-
-      // Create sender peer with random ID
-      peer = new Peer({ debug: 1 });
-
-      peer.on('open', () => {
-        const targetPeerId = PEER_PREFIX + codeInput;
-        activeConn = peer.connect(targetPeerId, { reliable: true });
-
-        setupConnectionListeners(activeConn);
-      });
-
-      peer.on('error', (err) => {
-        console.error('Sender Connection Error:', err);
-        updateStatus('error', 'Connection Failed');
-        showToast('Could not find host with code ' + codeInput, 'error');
-      });
-    }
-
-    // Handle Connection Listeners (Data, Open, Close)
-    function setupConnectionListeners(conn) {
       conn.on('open', () => {
-        updateStatus('connected', 'Connected!');
-        showToast('Direct P2P Link Established!', 'success');
-
-        const senderUploadArea = document.getElementById('senderUploadArea');
-        const senderStatus = document.getElementById('senderConnectionStatus');
-        
-        if (senderUploadArea) {
-          senderUploadArea.classList.remove('opacity-50', 'pointer-events-none');
-        }
-        if (senderStatus) {
-          senderStatus.innerText = 'Connected';
-          senderStatus.className = 'text-xs text-emerald-400 bg-emerald-950/60 px-3 py-1 rounded-full border border-emerald-800/60 font-medium';
-        }
+        updateContactStatus(remoteId, true);
+        showToast(`Connected to ${getContactDisplayName(remoteId)}`, 'success');
       });
 
       conn.on('data', (data) => {
-        // Received data packet
-        if (data.type === 'IMAGE_TRANSFER') {
-          handleIncomingImage(data);
-        }
+        handleIncomingData(remoteId, data);
       });
 
       conn.on('close', () => {
-        updateStatus('disconnected', 'Peer Disconnected');
-        showToast('Peer connection closed', 'error');
-        disableSenderArea();
+        updateContactStatus(remoteId, false);
       });
 
       conn.on('error', (err) => {
-        showToast('Connection error: ' + err, 'error');
+        updateContactStatus(remoteId, false);
       });
     }
 
-    // Disable sender upload controls
-    function disableSenderArea() {
-      const senderUploadArea = document.getElementById('senderUploadArea');
-      const senderStatus = document.getElementById('senderConnectionStatus');
-      if (senderUploadArea) senderUploadArea.classList.add('opacity-50', 'pointer-events-none');
-      if (senderStatus) {
-        senderStatus.innerText = 'Disconnected';
-        senderStatus.className = 'text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800';
+    function setupIncomingConnection(conn) {
+      const remoteId = conn.peer.replace(PEER_PREFIX, '');
+      connections[remoteId] = conn;
+
+      conn.on('open', () => {
+        ensureContactExists(remoteId);
+        updateContactStatus(remoteId, true);
+        showToast(`Incoming link from ${getContactDisplayName(remoteId)}`, 'info');
+      });
+
+      conn.on('data', (data) => {
+        handleIncomingData(remoteId, data);
+      });
+
+      conn.on('close', () => {
+        updateContactStatus(remoteId, false);
+      });
+    }
+
+    function updateContactStatus(peerId, isOnline) {
+      ensureContactExists(peerId);
+      contacts[peerId].isOnline = isOnline;
+      persistData();
+      renderContactsList();
+
+      if (activePeerId === peerId) {
+        const statusEl = document.getElementById('activeConnectionStatus');
+        if (statusEl) {
+          statusEl.innerHTML = isOnline 
+            ? `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-emerald-400">Connected</span>`
+            : `<span class="w-2 h-2 rounded-full bg-slate-500"></span><span class="text-slate-400">Disconnected</span>`;
+        }
       }
     }
 
-    // Send Image Files over DataChannel
-    async function handleFileSelect(event) {
-      const files = event.target.files;
-      if (!files || files.length === 0) return;
-
-      if (!activeConn || !activeConn.open) {
-        showToast('Not connected to a receiver device!', 'error');
-        return;
-      }
-
-      const progressContainer = document.getElementById('transferProgressContainer');
-      const progressBar = document.getElementById('progressBar');
-      const transferStatusText = document.getElementById('transferStatusText');
-      const transferPercent = document.getElementById('transferPercent');
-
-      progressContainer.classList.remove('hidden');
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (!file.type.startsWith('image/')) {
-          showToast(`Skipped non-image file: ${file.name}`, 'error');
-          continue;
-        }
-
-        transferStatusText.innerText = `Sending ${file.name} (${i + 1}/${files.length})...`;
-        
-        try {
-          const base64Data = await readFileAsDataURL(file, (progress) => {
-            progressBar.style.width = `${progress}%`;
-            transferPercent.innerText = `${Math.round(progress)}%`;
-          });
-
-          // Send image data object over WebRTC
-          activeConn.send({
-            type: 'IMAGE_TRANSFER',
-            name: file.name,
-            size: file.size,
-            mimeType: file.type,
-            data: base64Data,
-            timestamp: new Date().toLocaleTimeString()
-          });
-
-          showToast(`Sent ${file.name} successfully!`, 'success');
-        } catch (err) {
-          console.error('File read error:', err);
-          showToast(`Failed to send ${file.name}`, 'error');
-        }
-      }
-
-      setTimeout(() => {
-        progressContainer.classList.add('hidden');
-        progressBar.style.width = '0%';
-      }, 1500);
-
-      // Reset file input
-      event.target.value = '';
+    function reconnectActivePeer() {
+      if (!activePeerId) return;
+      showToast(`Reconnecting to ${getContactDisplayName(activePeerId)}...`, 'info');
+      connectToPeer(activePeerId);
     }
 
-    // Read file with FileReader and report progress
-    function readFileAsDataURL(file, onProgress) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onprogress = (e) => {
-          if (e.lengthComputable && onProgress) {
-            onProgress((e.loaded / e.total) * 100);
-          }
+    // 3. Data Handling & Messaging System
+    function handleIncomingData(senderId, data) {
+      ensureContactExists(senderId);
+
+      if (data.type === 'CHAT_MESSAGE') {
+        const msgObj = {
+          id: data.id || ('msg_' + Date.now()),
+          sender: senderId,
+          text: data.text || '',
+          fileData: data.fileData || null,
+          fileName: data.fileName || null,
+          fileType: data.fileType || null,
+          timestamp: data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = (error) => reject(error);
-        reader.readAsDataURL(file);
-      });
-    }
 
-    // Handle Received Image in Gallery
-    function handleIncomingImage(item) {
-      receivedImages.unshift(item);
-      renderGallery();
-      showToast(`Received new image: ${item.name}`, 'success');
-    }
+        if (!messages[senderId]) messages[senderId] = [];
+        messages[senderId].push(msgObj);
 
-    // Render Gallery Images Grid
-    function renderGallery() {
-      const galleryGrid = document.getElementById('galleryGrid');
-      const galleryEmptyState = document.getElementById('galleryEmptyState');
-      const imageCountBadge = document.getElementById('imageCountBadge');
-      const clearGalleryBtn = document.getElementById('clearGalleryBtn');
+        contacts[senderId].lastMessage = data.fileData ? '📷 Attachment' : data.text;
+        if (activePeerId !== senderId) {
+          contacts[senderId].unreadCount = (contacts[senderId].unreadCount || 0) + 1;
+        }
 
-      imageCountBadge.innerText = receivedImages.length;
+        persistData();
+        renderContactsList();
 
-      if (receivedImages.length === 0) {
-        galleryEmptyState.classList.remove('hidden');
-        galleryGrid.innerHTML = '';
-        clearGalleryBtn.classList.add('hidden');
-        return;
+        if (activePeerId === senderId) {
+          appendMessageBubble(msgObj);
+          scrollChatToBottom();
+        }
       }
+    }
 
-      galleryEmptyState.classList.add('hidden');
-      clearGalleryBtn.classList.remove('hidden');
-      galleryGrid.innerHTML = '';
+    function handleSendMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('messageInput');
+      const text = input.value.trim();
+      if (!text || !activePeerId) return;
 
-      receivedImages.forEach((img, idx) => {
-        const card = document.createElement('div');
-        card.className = 'group relative aspect-square bg-slate-950/60 rounded-xl overflow-hidden border border-slate-800 shadow-md flex flex-col justify-between hover:border-brand-500/50 transition duration-200';
+      dispatchMessage({ text: text });
+      input.value = '';
+    }
 
-        card.innerHTML = `
-          <img src="${img.data}" alt="${img.name}" class="w-full h-full object-cover transition duration-300 group-hover:scale-105 cursor-pointer" onclick="openModal('${img.data}', '${img.name}', '${img.timestamp}')">
-          <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-2.5 pointer-events-none">
-            <p class="text-xs font-medium text-white truncate">${img.name}</p>
-            <p class="text-[10px] text-slate-400">${img.timestamp}</p>
-          </div>
-          <div class="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <a href="${img.data}" download="${img.name}" title="Download Image" class="p-1.5 bg-slate-900/80 hover:bg-brand-600 text-white rounded-lg backdrop-blur-md transition border border-slate-700/80">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i>
-            </a>
+    function dispatchMessage(payload) {
+      if (!activePeerId) return;
+
+      const msgObj = {
+        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        sender: 'me',
+        text: payload.text || '',
+        fileData: payload.fileData || null,
+        fileName: payload.fileName || null,
+        fileType: payload.fileType || null,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      if (!messages[activePeerId]) messages[activePeerId] = [];
+      messages[activePeerId].push(msgObj);
+
+      contacts[activePeerId].lastMessage = payload.fileData ? '📷 Attachment' : payload.text;
+      persistData();
+
+      appendMessageBubble(msgObj);
+      scrollChatToBottom();
+      renderContactsList();
+
+      // Send over WebRTC if connected
+      const conn = connections[activePeerId];
+      if (conn && conn.open) {
+        conn.send({
+          type: 'CHAT_MESSAGE',
+          id: msgObj.id,
+          text: msgObj.text,
+          fileData: msgObj.fileData,
+          fileName: msgObj.fileName,
+          fileType: msgObj.fileType,
+          timestamp: msgObj.timestamp
+        });
+      } else {
+        showToast('Peer offline. Saved locally.', 'info');
+      }
+    }
+
+    // 4. Per-Message Deletion & One-Way Clear Chat History
+    function deleteSingleMessage(msgId) {
+      if (!activePeerId || !messages[activePeerId]) return;
+
+      messages[activePeerId] = messages[activePeerId].filter(m => m.id !== msgId);
+      
+      // Update last message preview
+      const remaining = messages[activePeerId];
+      contacts[activePeerId].lastMessage = remaining.length > 0 
+        ? (remaining[remaining.length - 1].fileData ? '📷 Attachment' : remaining[remaining.length - 1].text)
+        : 'No messages yet';
+
+      persistData();
+      renderActiveChatStream();
+      renderContactsList();
+      showToast('Message removed locally', 'info');
+    }
+
+    function confirmClearActiveChatHistory() {
+      if (!activePeerId) return;
+      const name = getContactDisplayName(activePeerId);
+
+      if (confirm(`Clear all chat history with ${name} on your device? (This won't delete messages on their device)`)) {
+        messages[activePeerId] = [];
+        contacts[activePeerId].lastMessage = 'Chat history cleared';
+        persistData();
+        renderActiveChatStream();
+        renderContactsList();
+        showToast('Chat history cleared locally', 'info');
+      }
+    }
+
+    function confirmDeleteActiveContact() {
+      if (!activePeerId) return;
+      const name = getContactDisplayName(activePeerId);
+
+      if (confirm(`Remove ${name} from your conversations sidebar?`)) {
+        delete contacts[activePeerId];
+        delete messages[activePeerId];
+        
+        if (connections[activePeerId]) {
+          connections[activePeerId].close();
+          delete connections[activePeerId];
+        }
+
+        activePeerId = null;
+        persistData();
+        renderContactsList();
+        
+        document.getElementById('activeChatInterface').classList.add('hidden');
+        document.getElementById('emptyChatState').classList.remove('hidden');
+        showToast('Contact removed', 'info');
+      }
+    }
+
+    // 5. Sidebar Contacts Rendering & Nicknames
+    function ensureContactExists(peerId) {
+      if (!contacts[peerId]) {
+        contacts[peerId] = {
+          nickname: '',
+          lastMessage: 'New contact added',
+          unreadCount: 0,
+          isOnline: false
+        };
+      }
+    }
+
+    function getContactDisplayName(peerId) {
+      if (contacts[peerId] && contacts[peerId].nickname) {
+        return contacts[peerId].nickname;
+      }
+      return peerId;
+    }
+
+    function renderContactsList() {
+      const container = document.getElementById('chatsList');
+      const searchVal = document.getElementById('searchInput').value.toLowerCase();
+      const keys = Object.keys(contacts);
+
+      document.getElementById('chatCountBadge').innerText = keys.length;
+
+      if (keys.length === 0) {
+        container.innerHTML = `
+          <div class="py-8 text-center text-slate-500 space-y-2">
+            <i data-lucide="user-plus" class="w-8 h-8 mx-auto text-slate-600"></i>
+            <p class="text-xs font-medium">No contacts yet</p>
+            <p class="text-[11px] text-slate-600">Click "New Chat" to connect</p>
           </div>
         `;
+        lucide.createIcons();
+        return;
+      }
 
-        galleryGrid.appendChild(card);
+      container.innerHTML = '';
+
+      keys.forEach(peerId => {
+        const contact = contacts[peerId];
+        const displayName = getContactDisplayName(peerId);
+
+        if (searchVal && !displayName.toLowerCase().includes(searchVal) && !peerId.toLowerCase().includes(searchVal)) {
+          return;
+        }
+
+        const isActive = activePeerId === peerId;
+        const card = document.createElement('div');
+        
+        card.className = `p-3 rounded-xl cursor-pointer transition flex items-center justify-between group ${
+          isActive ? 'bg-brand-500/15 border border-brand-500/40' : 'hover:bg-slate-800/50 border border-transparent'
+        }`;
+
+        card.onclick = () => selectActiveChat(peerId);
+
+        card.innerHTML = `
+          <div class="flex items-center space-x-3 min-w-0">
+            <div class="relative shrink-0">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent-600 to-brand-500 flex items-center justify-center text-white font-bold text-sm shadow-inner">
+                ${displayName.charAt(0).toUpperCase()}
+              </div>
+              <span class="w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-slate-900 ${
+                contact.isOnline ? 'bg-emerald-400' : 'bg-slate-600'
+              }"></span>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center space-x-1.5">
+                <h4 class="font-bold text-xs text-slate-200 truncate ${isActive ? 'text-brand-400' : ''}">${displayName}</h4>
+              </div>
+              <p class="text-[11px] text-slate-400 truncate mt-0.5">${contact.lastMessage || 'No messages'}</p>
+            </div>
+          </div>
+
+          ${contact.unreadCount > 0 ? `
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500 text-slate-950 shrink-0">
+              ${contact.unreadCount}
+            </span>
+          ` : ''}
+        `;
+
+        container.appendChild(card);
       });
 
       lucide.createIcons();
     }
 
-    // Clear Image Gallery
-    function clearGallery() {
-      if (confirm('Are you sure you want to clear all received images?')) {
-        receivedImages = [];
-        renderGallery();
-      }
+    function filterContacts() {
+      renderContactsList();
     }
 
-    // Drag and Drop Helper Setup
-    function setupDragAndDrop() {
-      const dropZone = document.getElementById('dropZone');
-      if (!dropZone) return;
+    function selectActiveChat(peerId) {
+      activePeerId = peerId;
+      if (contacts[peerId]) {
+        contacts[peerId].unreadCount = 0;
+      }
+      persistData();
+      renderContactsList();
 
-      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }, false);
+      document.getElementById('emptyChatState').classList.add('hidden');
+      document.getElementById('activeChatInterface').classList.remove('hidden');
+
+      // Update Header Info
+      const displayName = getContactDisplayName(peerId);
+      document.getElementById('activePeerName').innerText = displayName;
+      document.getElementById('activePeerId').innerText = peerId;
+      document.getElementById('activePeerAvatar').innerText = displayName.charAt(0).toUpperCase();
+
+      const isOnline = contacts[peerId]?.isOnline || false;
+      updateContactStatus(peerId, isOnline);
+
+      // Connect if not already connected
+      if (!connections[peerId] || !connections[peerId].open) {
+        connectToPeer(peerId);
+      }
+
+      renderActiveChatStream();
+      scrollChatToBottom();
+    }
+
+    function renderActiveChatStream() {
+      const container = document.getElementById('messagesContainer');
+      container.innerHTML = '';
+
+      const chatMsgs = messages[activePeerId] || [];
+
+      if (chatMsgs.length === 0) {
+        container.innerHTML = `
+          <div class="py-12 text-center text-slate-500 space-y-2">
+            <i data-lucide="sparkles" class="w-8 h-8 mx-auto text-slate-600"></i>
+            <p class="text-xs font-medium">Beginning of direct end-to-end conversation</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      chatMsgs.forEach(msg => {
+        appendMessageBubble(msg);
       });
 
-      ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-          dropZone.classList.add('border-brand-500', 'bg-slate-950/80');
-        }, false);
-      });
-
-      ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => {
-          dropZone.classList.remove('border-brand-500', 'bg-slate-950/80');
-        }, false);
-      });
-
-      dropZone.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        handleFileSelect({ target: { files: files } });
-      }, false);
+      lucide.createIcons();
     }
 
-    // Camera Trigger
-    function triggerCamera() {
-      document.getElementById('cameraInput').click();
-    }
+    function appendMessageBubble(msg) {
+      const container = document.getElementById('messagesContainer');
+      const isMe = msg.sender === 'me';
 
-    // Copy Code Helper
-    function copyRoomCode() {
-      if (!currentRoomCode) return;
-      
-      const el = document.createElement('textarea');
-      el.value = currentRoomCode;
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      document.body.removeChild(el);
+      const bubbleWrap = document.createElement('div');
+      bubbleWrap.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} group message-hover relative my-1`;
 
-      showToast('Room Code copied to clipboard!', 'success');
-    }
-
-    // Generate New Code / Refresh Peer
-    function generateNewRoom() {
-      if (confirm('Generate new room code? Active connections will disconnect.')) {
-        initReceiverPeer();
+      let mediaHTML = '';
+      if (msg.fileData) {
+        if (msg.fileType && msg.fileType.startsWith('image/')) {
+          mediaHTML = `
+            <div class="relative rounded-xl overflow-hidden mb-1.5 cursor-pointer border border-slate-700/60 max-w-xs group/img" onclick="openLightbox('${msg.fileData}', '${msg.fileName}')">
+              <img src="${msg.fileData}" alt="Attachment" class="w-full max-h-60 object-cover">
+              <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center">
+                <i data-lucide="maximize-2" class="w-6 h-6 text-white"></i>
+              </div>
+            </div>
+          `;
+        } else if (msg.fileType && msg.fileType.startsWith('audio/')) {
+          mediaHTML = `
+            <div class="mb-1.5">
+              <audio controls src="${msg.fileData}" class="max-w-xs rounded-xl"></audio>
+            </div>
+          `;
+        }
       }
-    }
 
-    // Fullscreen Image Modal Controls
-    function openModal(dataUrl, name, timestamp) {
-      const modal = document.getElementById('imageModal');
-      const modalImg = document.getElementById('modalImage');
-      const modalDl = document.getElementById('modalDownloadBtn');
-      const caption = document.getElementById('modalCaption');
+      bubbleWrap.innerHTML = `
+        <div class="flex items-center space-x-2 max-w-[85%] sm:max-w-[70%]">
+          ${isMe ? `
+            <button onclick="deleteSingleMessage('${msg.id}')" title="Delete message locally" class="msg-actions opacity-0 transition p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-red-400">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          ` : ''}
 
-      modalImg.src = dataUrl;
-      modalDl.href = dataUrl;
-      modalDl.download = name || 'received_image.png';
-      caption.innerText = `${name || 'Image'} • Received at ${timestamp || 'now'}`;
+          <div class="p-3 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-md ${
+            isMe 
+              ? 'bg-gradient-to-tr from-brand-600 to-brand-500 text-slate-950 font-medium rounded-tr-none' 
+              : 'bg-slate-800/90 text-slate-100 border border-slate-700/60 rounded-tl-none'
+          }">
+            ${mediaHTML}
+            ${msg.text ? `<p class="break-words">${escapeHTML(msg.text)}</p>` : ''}
+            <div class="text-[10px] mt-1 text-right font-mono opacity-60">
+              ${msg.timestamp}
+            </div>
+          </div>
 
-      modal.classList.remove('hidden');
-    }
-
-    function closeModal() {
-      document.getElementById('imageModal').classList.add('hidden');
-    }
-
-    // UI Status Indicator Update
-    function updateStatus(state, message) {
-      statusText.innerText = message;
-      
-      if (state === 'ready') {
-        statusDot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse';
-        statusBadge.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-emerald-500/30 text-emerald-300';
-      } else if (state === 'connected') {
-        statusDot.className = 'w-2.5 h-2.5 rounded-full bg-brand-400';
-        statusBadge.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-brand-500/40 text-brand-300';
-      } else if (state === 'connecting') {
-        statusDot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping';
-        statusBadge.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-amber-500/30 text-amber-300';
-      } else {
-        statusDot.className = 'w-2.5 h-2.5 rounded-full bg-slate-500';
-        statusBadge.className = 'flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-medium glass-card border border-slate-700 text-slate-400';
-      }
-    }
-
-    // Toast Notification System
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-      
-      const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'alert-circle' : 'info';
-      const bgColor = type === 'success' ? 'bg-emerald-950/90 border-emerald-700/80 text-emerald-200' : type === 'error' ? 'bg-red-950/90 border-red-700/80 text-red-200' : 'bg-slate-900/90 border-slate-700 text-slate-200';
-
-      toast.className = `pointer-events-auto flex items-center space-x-2 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-md text-xs font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${bgColor}`;
-      
-      toast.innerHTML = `
-        <i data-lucide="${icon}" class="w-4 h-4 shrink-0"></i>
-        <span>${message}</span>
+          ${!isMe ? `
+            <button onclick="deleteSingleMessage('${msg.id}')" title="Delete message locally" class="msg-actions opacity-0 transition p-1.5 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-red-400">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          ` : ''}
+        </div>
       `;
 
-      container.appendChild(toast);
+      container.appendChild(bubbleWrap);
       lucide.createIcons();
+    }
 
-      // Animate In
+    function scrollChatToBottom() {
+      const container = document.getElementById('messagesContainer');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function closeChatMobile() {
+      document.getElementById('activeChatInterface').classList.add('hidden');
+      document.getElementById('emptyChatState').classList.remove('hidden');
+    }
+
+    // 6. Rich Media Sharing (Files, Images, Voice Notes)
+    function handleFileSelect(e) {
+      const files = e.target.files;
+      if (!files || files.length === 0 || !activePeerId) return;
+
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          dispatchMessage({
+            text: file.name,
+            fileData: evt.target.result,
+            fileName: file.name,
+            fileType: file.type
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+
+      e.target.value = '';
+    }
+
+    function setupDragAndDrop() {
+      const windowEl = document.getElementById('chatWindow');
+      const overlay = document.getElementById('dropOverlay');
+
+      ['dragenter', 'dragover'].forEach(name => {
+        windowEl.addEventListener(name, (e) => {
+          e.preventDefault();
+          if (activePeerId) overlay.classList.remove('hidden');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(name => {
+        windowEl.addEventListener(name, (e) => {
+          e.preventDefault();
+          overlay.classList.add('hidden');
+        });
+      });
+
+      windowEl.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+          handleFileSelect({ target: { files: files } });
+        }
+      });
+    }
+
+    function setupPasteListener() {
+      document.addEventListener('paste', (e) => {
+        if (!activePeerId) return;
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        for (let item of items) {
+          if (item.type.indexOf('image') !== -1) {
+            const blob = item.getAsFile();
+            handleFileSelect({ target: { files: [blob] } });
+          }
+        }
+      });
+    }
+
+    // Voice Note Recorder
+    async function toggleVoiceRecording() {
+      if (!activePeerId) return;
+      const bar = document.getElementById('voiceRecordingBar');
+
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        stopAndSendVoiceNote();
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            dispatchMessage({
+              text: '🎤 Voice Note',
+              fileData: evt.target.result,
+              fileName: 'voicenote.webm',
+              fileType: 'audio/webm'
+            });
+          };
+          reader.readAsDataURL(audioBlob);
+
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        mediaRecorder.start();
+        bar.classList.remove('hidden');
+        voiceSeconds = 0;
+        voiceRecordingTimer = setInterval(() => {
+          voiceSeconds++;
+          const mins = String(Math.floor(voiceSeconds / 60)).padStart(2, '0');
+          const secs = String(voiceSeconds % 60).padStart(2, '0');
+          document.getElementById('voiceTimer').innerText = `${mins}:${secs}`;
+        }, 1000);
+
+      } catch (err) {
+        showToast('Microphone access denied or unavailble', 'error');
+      }
+    }
+
+    function cancelVoiceRecording() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        audioChunks = [];
+      }
+      clearInterval(voiceRecordingTimer);
+      document.getElementById('voiceRecordingBar').classList.add('hidden');
+    }
+
+    function stopAndSendVoiceNote() {
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+      }
+      clearInterval(voiceRecordingTimer);
+      document.getElementById('voiceRecordingBar').classList.add('hidden');
+    }
+
+    // 7. Modals Logic (QR Code, Camera Scanner, Profile, Nicknames)
+    function openMyQRModal() {
+      const qrContainer = document.getElementById('qrcodeCanvas');
+      qrContainer.innerHTML = '';
+
+      const shareableURL = `${window.location.origin}${window.location.pathname}?code=${myFlashId}`;
+
+      new QRCode(qrContainer, {
+        text: shareableURL,
+        width: 180,
+        height: 180,
+        colorDark: "#07090e",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+
+      document.getElementById('myQRModal').classList.remove('hidden');
+    }
+
+    function closeMyQRModal() {
+      document.getElementById('myQRModal').classList.add('hidden');
+    }
+
+    function copyMyFlashID() {
+      navigator.clipboard.writeText(myFlashId).then(() => {
+        showToast('FLASH ID copied to clipboard!', 'success');
+      });
+    }
+
+    // Camera Scanner
+    async function openCameraScannerModal() {
+      document.getElementById('cameraScannerModal').classList.remove('hidden');
+      const video = document.getElementById('qrVideo');
+      const statusEl = document.getElementById('scannerStatus');
+
+      try {
+        qrVideoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = qrVideoStream;
+        video.setAttribute('playsinline', true);
+        video.play();
+
+        scanQRCodeFrame();
+      } catch (err) {
+        statusEl.innerText = 'Could not access camera for scanning';
+        showToast('Camera permission required', 'error');
+      }
+    }
+
+    function scanQRCodeFrame() {
+      const video = document.getElementById('qrVideo');
+      const canvas = document.getElementById('qrCanvas');
+      const ctx = canvas.getContext('2d');
+
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if (code) {
+          let scannedId = code.data;
+          if (scannedId.includes('code=')) {
+            scannedId = scannedId.split('code=')[1];
+          }
+
+          if (scannedId) {
+            closeCameraScannerModal();
+            startNewChat(scannedId.toUpperCase());
+            showToast(`QR Code Scanned: ${scannedId}`, 'success');
+            return;
+          }
+        }
+      }
+
+      qrScanAnimation = requestAnimationFrame(scanQRCodeFrame);
+    }
+
+    function closeCameraScannerModal() {
+      if (qrVideoStream) {
+        qrVideoStream.getTracks().forEach(t => t.stop());
+      }
+      if (qrScanAnimation) {
+        cancelAnimationFrame(qrScanAnimation);
+      }
+      document.getElementById('cameraScannerModal').classList.add('hidden');
+    }
+
+    // New Chat & Nicknames Modals
+    function openNewChatModal() {
+      document.getElementById('newPeerIdInput').value = '';
+      document.getElementById('newPeerNicknameInput').value = '';
+      document.getElementById('newChatModal').classList.remove('hidden');
+    }
+
+    function closeNewChatModal() {
+      document.getElementById('newChatModal').classList.add('hidden');
+    }
+
+    function startNewChatFromModal() {
+      const peerId = document.getElementById('newPeerIdInput').value.trim().toUpperCase();
+      const nickname = document.getElementById('newPeerNicknameInput').value.trim();
+
+      if (!peerId) {
+        showToast('Please enter a valid FLASH ID', 'error');
+        return;
+      }
+
+      startNewChat(peerId, nickname);
+      closeNewChatModal();
+    }
+
+    function startNewChat(peerId, nickname = '') {
+      ensureContactExists(peerId);
+      if (nickname) {
+        contacts[peerId].nickname = nickname;
+      }
+      persistData();
+      renderContactsList();
+      selectActiveChat(peerId);
+    }
+
+    function openNicknameModal() {
+      if (!activePeerId) return;
+      document.getElementById('editNicknameInput').value = contacts[activePeerId]?.nickname || '';
+      document.getElementById('nicknameModal').classList.remove('hidden');
+    }
+
+    function closeNicknameModal() {
+      document.getElementById('nicknameModal').classList.add('hidden');
+    }
+
+    function saveNickname() {
+      if (!activePeerId) return;
+      const nickname = document.getElementById('editNicknameInput').value.trim();
+      contacts[activePeerId].nickname = nickname;
+      persistData();
+      renderContactsList();
+      selectActiveChat(activePeerId);
+      closeNicknameModal();
+      showToast('Nickname updated', 'success');
+    }
+
+    function removeNickname() {
+      if (!activePeerId) return;
+      contacts[activePeerId].nickname = '';
+      persistData();
+      renderContactsList();
+      selectActiveChat(activePeerId);
+      closeNicknameModal();
+    }
+
+    // Profile Settings Modal
+    function openProfileModal() {
+      document.getElementById('profileModal').classList.remove('hidden');
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profileModal').classList.add('hidden');
+    }
+
+    function saveProfileSettings() {
+      const name = document.getElementById('profileDisplayNameInput').value.trim();
+      if (name) {
+        myDisplayName = name;
+        localStorage.setItem('flashshare_my_name', name);
+        document.getElementById('myAvatarDisplay').innerText = name.charAt(0).toUpperCase();
+        showToast('Profile updated!', 'success');
+      }
+      closeProfileModal();
+    }
+
+    // Lightbox Modal
+    function openLightbox(src, name) {
+      document.getElementById('lightboxImage').src = src;
+      document.getElementById('lightboxDownloadBtn').href = src;
+      document.getElementById('lightboxCaption').innerText = name || 'Shared Image';
+      document.getElementById('lightboxModal').classList.remove('hidden');
+    }
+
+    function closeLightboxModal() {
+      document.getElementById('lightboxModal').classList.add('hidden');
+    }
+
+    // Utilities
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      const bg = type === 'success' ? 'bg-emerald-950/90 border-emerald-700 text-emerald-200' 
+               : type === 'error' ? 'bg-red-950/90 border-red-700 text-red-200' 
+               : 'bg-slate-900/90 border-slate-700 text-slate-200';
+
+      toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl border backdrop-blur-md text-xs font-semibold shadow-2xl transition transform translate-y-2 opacity-0 flex items-center space-x-2 ${bg}`;
+      toast.innerHTML = `<span>${msg}</span>`;
+
+      container.appendChild(toast);
+
       requestAnimationFrame(() => {
         toast.classList.remove('translate-y-2', 'opacity-0');
       });
 
-      // Remove after 3 seconds
       setTimeout(() => {
         toast.classList.add('opacity-0', 'translate-y-2');
         setTimeout(() => toast.remove(), 300);
-      }, 3200);
+      }, 3000);
     }
   </script>
 </body>
