@@ -1,0 +1,13 @@
+name = "flashshare-cloud-sync"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+# After creating a D1 database, replace DATABASE_ID with its ID.
+[[d1_databases]]
+binding = "FLASHSHARE"
+database_name = "flashshare-cloud"
+database_id = "DATABASE_ID"
+
+# Optional: lock browser API access to your Pages origin, e.g. https://your-site.pages.dev
+# [vars]
+# ALLOWED_ORIGIN = "https://your-site.pages.dev"

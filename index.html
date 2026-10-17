@@ -1,1778 +1,1545 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full bg-[#07090e] text-slate-100 antialiased dark">
+<html lang="en" class="h-full dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>FLASHSHARE</title>
-  
-  <!-- Dynamic SVG Favicon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2'/></svg>">
-
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- PeerJS WebRTC CDN -->
-  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-  <!-- QRCode.js Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- jsQR Code Camera Scanner -->
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#ecfeff',
-              100: '#cffaff',
-              400: '#22d3ee',
-              500: '#06b6d4',
-              600: '#0891b2',
-              700: '#0e7490',
-            },
-            accent: {
-              500: '#8b5cf6',
-              600: '#7c3aed',
-            }
-          },
-          animation: {
-            'blob-float-1': 'float1 14s infinite alternate ease-in-out',
-            'blob-float-2': 'float2 18s infinite alternate ease-in-out',
-            'pulse-subtle': 'pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-          },
-          keyframes: {
-            float1: {
-              '0%': { transform: 'translate(0px, 0px) scale(1)' },
-              '100%': { transform: 'translate(60px, 80px) scale(1.15)' },
-            },
-            float2: {
-              '0%': { transform: 'translate(0px, 0px) scale(1)' },
-              '100%': { transform: 'translate(-50px, -60px) scale(1.2)' },
-            }
-          }
-        }
-      }
-    }
-  </script>
-
-  <style>
-    /* Custom Scrollbar */
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
-
-    /* Glassmorphism Classes */
-    .glass-panel {
-      background: rgba(15, 23, 42, 0.85);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .glass-input {
-      background: rgba(8, 14, 26, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      transition: all 0.2s ease;
-    }
-    .glass-input:focus {
-      border-color: #06b6d4;
-      box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
-      outline: none;
-    }
-    .message-hover:hover .msg-actions {
-      opacity: 1;
-    }
-
-    /* Mobile Drawer Transition */
-    .sidebar-drawer {
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* Modal Display Control Rules for Pointer Events */
-    .modal-backdrop {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease-in-out;
-    }
-    .modal-backdrop.active {
-      opacity: 1;
-      pointer-events: auto;
-    }
-  </style>
-</head>
-<body class="h-full flex flex-col font-sans bg-[#07090e] text-slate-100 overflow-hidden select-none">
-
-  <!-- Ambient Animated Background Glowing Blobs -->
-  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
-    <div class="absolute -top-32 -left-32 w-80 h-80 sm:w-96 sm:h-96 bg-brand-500/15 rounded-full blur-3xl animate-blob-float-1"></div>
-    <div class="absolute -bottom-32 -right-32 w-80 h-80 sm:w-96 sm:h-96 bg-accent-500/15 rounded-full blur-3xl animate-blob-float-2"></div>
-  </div>
-
-  <!-- App Main Wrapper -->
-  <div class="relative z-10 flex-1 flex flex-col h-full max-w-[1600px] w-full mx-auto p-1.5 sm:p-4 lg:p-6">
-
-    <!-- Top Navigation Header -->
-    <header class="glass-panel rounded-2xl px-3 py-2 sm:px-4 sm:py-3 mb-2 sm:mb-3 flex items-center justify-between shrink-0 shadow-2xl">
-      <!-- App Brand & Mobile Sidebar Toggle -->
-      <div class="flex items-center space-x-2 sm:space-x-3">
-        
-        <!-- Mobile Sidebar / Conversations Drawer Toggle Button -->
-        <button onclick="toggleSidebarMobile()" class="md:hidden relative p-2 rounded-xl bg-slate-900 border border-slate-700/60 hover:border-brand-500 text-slate-200 transition flex items-center justify-center">
-          <i data-lucide="message-square" class="w-5 h-5 text-brand-400"></i>
-          <span id="mobileGlobalUnreadBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-brand-500 text-slate-950 text-[9px] font-black rounded-full items-center justify-center">0</span>
-        </button>
-
-        <div class="p-2 sm:p-2.5 bg-gradient-to-tr from-brand-600 via-brand-500 to-accent-500 rounded-xl shadow-lg shadow-brand-500/30 flex items-center justify-center">
-          <i data-lucide="zap" class="w-5 h-5 sm:w-6 sm:h-6 text-white"></i>
-        </div>
-        <div>
-          <div class="flex items-center space-x-1.5 sm:space-x-2">
-            <h1 class="text-base sm:text-xl font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-brand-400 bg-clip-text text-transparent">FLASHSHARE</h1>
-            <span class="text-[9px] sm:text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">P2P</span>
-          </div>
-          <p class="text-[11px] text-slate-400 hidden sm:block">Direct Encrypted P2P Cross-Device Messenger</p>
-        </div>
-      </div>
-
-      <!-- User Profile & Action Controls -->
-      <div class="flex items-center space-x-1.5 sm:space-x-3">
-        <!-- My FLASH ID Badge -->
-        <div onclick="openMyQRModal()" class="flex items-center space-x-1.5 sm:space-x-2 px-2.5 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/60 hover:border-brand-500/60 transition cursor-pointer group">
-          <div id="myAvatarDisplay" class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center text-white font-bold text-xs uppercase shadow-inner">
-            ?
-          </div>
-          <div class="text-left hidden sm:block">
-            <p class="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">Your FLASH ID</p>
-            <p id="myFlashIdDisplay" class="font-mono text-xs font-bold text-brand-400 group-hover:text-white transition">FLASH------</p>
-          </div>
-          <i data-lucide="qr-code" class="w-4 h-4 text-slate-400 group-hover:text-brand-400 transition"></i>
-        </div>
-
-        <!-- Camera Scanner Button -->
-        <button onclick="openCameraScannerModal()" class="p-2 sm:p-2.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-400 border border-brand-500/30 hover:border-brand-500 transition flex items-center space-x-1.5 text-xs font-semibold" title="Scan Friend's QR Code">
-          <i data-lucide="camera" class="w-4 h-4"></i>
-          <span class="hidden md:inline">Scan QR</span>
-        </button>
-
-        <!-- Edit Profile Button -->
-        <button onclick="openProfileModal()" class="p-2 sm:p-2.5 rounded-xl glass-panel hover:bg-slate-800/80 text-slate-300 hover:text-white transition" title="Edit Profile & Account Security">
-          <i data-lucide="user-cog" class="w-4 h-4"></i>
-        </button>
-      </div>
-    </header>
-
-    <!-- Main Workspace (Sidebar + Active Chat Window) -->
-    <div class="flex-1 flex space-x-0 md:space-x-3 min-h-0 overflow-hidden relative">
-
-      <!-- Backdrop Overlay for Mobile Drawer -->
-      <div id="sidebarBackdrop" onclick="closeSidebarMobile()" class="md:hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-30 pointer-events-none opacity-0 transition-opacity"></div>
-
-      <!-- SIDEBAR: Active Chats & Contacts -->
-      <aside id="sidebar" class="sidebar-drawer fixed md:static inset-y-0 left-0 z-40 w-full sm:w-80 md:w-80 lg:w-96 glass-panel rounded-r-2xl md:rounded-2xl flex flex-col shrink-0 shadow-2xl overflow-hidden -translate-x-full md:translate-x-0">
-        
-        <!-- Sidebar Top Header & Add Chat Button -->
-        <div class="p-3 border-b border-slate-800/80 space-y-2.5 shrink-0">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-              <i data-lucide="message-square" class="w-4 h-4 text-brand-400"></i>
-              <h2 class="font-bold text-sm tracking-wide text-slate-200">Conversations</h2>
-              <span id="chatCountBadge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">0</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <button onclick="openNewChatModal()" class="p-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold transition flex items-center space-x-1 text-xs shadow-lg shadow-brand-500/20">
-                <i data-lucide="plus" class="w-4 h-4"></i>
-                <span class="inline">New Chat</span>
-              </button>
-              <!-- Mobile Close Sidebar Drawer -->
-              <button onclick="closeSidebarMobile()" class="md:hidden p-2 rounded-xl text-slate-400 hover:text-white bg-slate-800/60">
-                <i data-lucide="x" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Contact Search Bar -->
-          <div class="relative">
-            <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-2.5"></i>
-            <input id="searchInput" type="text" oninput="filterContacts()" placeholder="Search contacts or nicknames..." class="w-full text-xs pl-9 pr-3 py-2 rounded-xl glass-input text-slate-200 placeholder-slate-500">
-          </div>
-        </div>
-
-        <!-- Sidebar Chats List -->
-        <div id="chatsList" class="flex-1 overflow-y-auto p-2 space-y-1">
-          <!-- Populated dynamically via JavaScript -->
-        </div>
-
-      </aside>
-
-      <!-- RIGHT PANEL: Active Chat Conversation Window -->
-      <main id="chatWindow" class="flex-1 glass-panel rounded-2xl flex flex-col shrink min-w-0 shadow-2xl relative overflow-hidden h-full">
-        
-        <!-- Empty State (When no chat is selected) -->
-        <div id="emptyChatState" class="flex-1 flex flex-col items-center justify-center p-6 text-center text-slate-500 space-y-4">
-          <div class="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 shadow-2xl relative">
-            <i data-lucide="messages-square" class="w-12 h-12 sm:w-16 sm:h-16 text-slate-600"></i>
-            <div class="absolute -bottom-1 -right-1 p-2 bg-brand-500 rounded-full text-slate-950 shadow-lg">
-              <i data-lucide="zap" class="w-3.5 h-3.5 sm:w-4 sm:h-4"></i>
-            </div>
-          </div>
-          <div>
-            <h3 class="text-sm sm:text-base font-bold text-slate-300">No Chat Selected</h3>
-            <p class="text-xs text-slate-500 max-w-sm mt-1">Select a contact or click "New Chat" to connect via FLASH ID or QR Code.</p>
-          </div>
-          <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-            <button onclick="openSidebarMobile()" class="md:hidden px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition border border-slate-700 flex items-center justify-center space-x-2">
-              <i data-lucide="message-square" class="w-4 h-4 text-brand-400"></i>
-              <span>Open Conversations List</span>
-            </button>
-            <button onclick="openNewChatModal()" class="px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs transition shadow-lg shadow-brand-600/20 flex items-center justify-center space-x-2">
-              <i data-lucide="plus-circle" class="w-4 h-4"></i>
-              <span>Start New Chat</span>
-            </button>
-            <button onclick="openRestoreAccountModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition border border-slate-700/80 flex items-center justify-center space-x-2">
-              <i data-lucide="key-round" class="w-4 h-4 text-amber-400"></i>
-              <span>Restore Existing Account</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Active Chat Interface -->
-        <div id="activeChatInterface" class="flex-1 flex flex-col min-h-0 hidden">
-          
-          <!-- Chat Header Bar -->
-          <div class="px-3 py-2.5 sm:px-4 sm:py-3 border-b border-slate-800/80 flex items-center justify-between shrink-0 bg-slate-900/40 backdrop-blur-md">
-            <div class="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
-              
-              <!-- Mobile Back Button -->
-              <button onclick="openSidebarMobile()" class="md:hidden p-2 rounded-xl text-brand-400 hover:text-white bg-slate-800/80 border border-slate-700/60 flex items-center space-x-1" title="Back to Chats List">
-                <i data-lucide="chevron-left" class="w-5 h-5"></i>
-              </button>
-
-              <div id="activePeerAvatar" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-accent-600 to-brand-500 flex items-center justify-center text-white font-bold text-xs sm:text-sm shrink-0 shadow-inner">
-                ?
-              </div>
-              <div class="min-w-0">
-                <div class="flex items-center space-x-1.5">
-                  <h3 id="activePeerName" class="font-bold text-xs sm:text-sm text-slate-100 truncate">Contact Name</h3>
-                  <button onclick="openNicknameModal()" title="Edit Custom Nickname" class="text-slate-400 hover:text-brand-400 transition p-0.5">
-                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                  </button>
-                </div>
-                <div class="flex items-center space-x-2 text-[10px] sm:text-[11px]">
-                  <span id="activePeerId" class="font-mono text-slate-400 truncate">FLASH-XXXXX</span>
-                  <span class="text-slate-600">•</span>
-                  <span id="activeConnectionStatus" class="flex items-center space-x-1 font-medium text-slate-400">
-                    <span class="w-2 h-2 rounded-full bg-slate-500"></span>
-                    <span>Disconnected</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Chat Actions Menu -->
-            <div class="flex items-center space-x-1 shrink-0">
-              <!-- Reconnect Button -->
-              <button onclick="reconnectActivePeer()" title="Force WebRTC Reconnect" class="p-2 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/60 transition">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-              </button>
-              <!-- One-Way Clear Chat History Button -->
-              <button onclick="confirmClearActiveChatHistory()" title="Clear Chat History (One-Way / Local Only)" class="p-2 rounded-xl text-slate-400 hover:text-amber-400 hover:bg-slate-800/60 transition">
-                <i data-lucide="eraser" class="w-4 h-4"></i>
-              </button>
-              <!-- Delete Contact Button -->
-              <button onclick="confirmDeleteActiveContact()" title="Remove Contact from Sidebar" class="p-2 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800/60 transition">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </div>
-
-          <!-- Messages Stream Container -->
-          <div id="messagesContainer" class="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 min-h-0">
-            <!-- Dynamic Message Bubbles appended here -->
-          </div>
-
-          <!-- Drag and Drop Overlay Indicator -->
-          <div id="dropOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md border-2 border-dashed border-brand-400 z-20 hidden flex flex-col items-center justify-center space-y-3 text-brand-300 pointer-events-none">
-            <i data-lucide="upload-cloud" class="w-12 h-12 animate-bounce text-brand-400"></i>
-            <p class="font-bold text-sm sm:text-base">Drop files here to send directly</p>
-          </div>
-
-          <!-- Voice Recording Bar -->
-          <div id="voiceRecordingBar" class="px-3 py-2 bg-red-950/80 border-t border-red-800/60 flex items-center justify-between hidden shrink-0">
-            <div class="flex items-center space-x-2 text-xs font-semibold text-red-300">
-              <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
-              <span>Recording Audio...</span>
-              <span id="voiceTimer" class="font-mono text-white">00:00</span>
-            </div>
-            <div class="flex items-center space-x-1.5">
-              <button onclick="cancelVoiceRecording()" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700">Cancel</button>
-              <button onclick="stopAndSendVoiceNote()" class="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-500 flex items-center space-x-1">
-                <i data-lucide="send" class="w-3 h-3"></i>
-                <span>Send</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Chat Input Bar -->
-          <div class="p-2.5 sm:p-3 border-t border-slate-800/80 bg-slate-900/60 backdrop-blur-md shrink-0">
-            <form onsubmit="handleSendMessage(event)" class="flex items-center space-x-1.5 sm:space-x-2">
-              
-              <!-- File Attachment Controls -->
-              <div class="flex items-center space-x-0.5 sm:space-x-1">
-                <!-- Gallery File Picker -->
-                <button type="button" onclick="document.getElementById('fileInput').click()" class="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/80 transition" title="Send Image or File from Gallery">
-                  <i data-lucide="image-plus" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                </button>
-                <input id="fileInput" type="file" accept="image/*,video/*,audio/*,application/pdf" multiple class="hidden" onchange="handleFileSelect(event)">
-
-                <!-- Mobile Camera Trigger -->
-                <button type="button" onclick="document.getElementById('cameraInput').click()" class="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-brand-400 hover:bg-slate-800/80 transition" title="Take Photo with Camera">
-                  <i data-lucide="camera" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                </button>
-                <input id="cameraInput" type="file" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
-
-                <!-- Voice Note Trigger -->
-                <button type="button" onclick="toggleVoiceRecording()" class="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-slate-800/80 transition" title="Record Voice Note">
-                  <i data-lucide="mic" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-                </button>
-              </div>
-
-              <!-- Message Input Textarea -->
-              <input id="messageInput" type="text" placeholder="Type a message..." autocomplete="off" class="flex-1 glass-input px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm text-slate-100 placeholder-slate-500">
-
-              <!-- Send Button -->
-              <button type="submit" class="p-2 sm:p-2.5 rounded-xl bg-gradient-to-tr from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-slate-950 font-bold transition shadow-lg shadow-brand-500/20 shrink-0">
-                <i data-lucide="send" class="w-4 h-4 sm:w-5 sm:h-5"></i>
-              </button>
-            </form>
-          </div>
-
-        </div>
-
-      </main>
-
-    </div>
-
-  </div>
-
-  <!-- ==================== MODAL DIALOGS ==================== -->
-
-  <!-- Modal 1: My FLASH ID & QR Code Modal -->
-  <div id="myQRModal" class="modal-backdrop fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-sm rounded-3xl p-5 sm:p-6 text-center space-y-4 shadow-2xl relative border border-slate-800">
-      
-      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-sm sm:text-base">Your Personal FLASH ID</h3>
-        <button onclick="closeMyQRModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="flex flex-col items-center justify-center space-y-3 py-2">
-        <div class="p-3 bg-white rounded-2xl shadow-xl inline-block" id="qrcodeCanvas"></div>
-        <p id="modalFlashIdText" class="font-mono text-base font-bold text-brand-400 tracking-wider">FLASH-XXXXX</p>
-      </div>
-
-      <div class="flex space-x-2 pt-2">
-        <button onclick="copyMyFlashID()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition border border-slate-700 flex items-center justify-center space-x-2">
-          <i data-lucide="copy" class="w-4 h-4"></i>
-          <span>Copy ID</span>
-        </button>
-        <button onclick="closeMyQRModal()" class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-brand-500/20">
-          Hide QR
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal 2: Camera Scanner Modal -->
-  <div id="cameraScannerModal" class="modal-backdrop fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-md rounded-3xl p-5 sm:p-6 text-center space-y-4 shadow-2xl border border-slate-800">
-      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-sm sm:text-base flex items-center space-x-2">
-          <i data-lucide="camera" class="w-4 h-4 text-brand-400"></i>
-          <span>Scan Friend's QR Code</span>
-        </h3>
-        <button onclick="closeCameraScannerModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 aspect-square max-w-xs mx-auto flex items-center justify-center">
-        <video id="qrVideo" class="w-full h-full object-cover"></video>
-        <canvas id="qrCanvas" class="hidden"></canvas>
-        <div class="absolute inset-8 border-2 border-brand-400/60 rounded-xl pointer-events-none animate-pulse"></div>
-      </div>
-
-      <p id="scannerStatus" class="text-xs text-slate-400">Align friend's QR code within camera viewfinder</p>
-
-      <button onclick="closeCameraScannerModal()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition border border-slate-700">
-        Cancel Scan
-      </button>
-    </div>
-  </div>
-
-  <!-- Modal 3: New Chat Modal -->
-  <div id="newChatModal" class="modal-backdrop fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-sm rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-800">
-      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-sm sm:text-base flex items-center space-x-2">
-          <i data-lucide="user-plus" class="w-4 h-4 text-brand-400"></i>
-          <span>Start New Chat</span>
-        </h3>
-        <button onclick="closeNewChatModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="space-y-3 text-left">
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Peer FLASH ID</label>
-          <input id="newPeerIdInput" type="text" placeholder="e.g. FLASH-A1B2C" class="w-full text-xs px-4 py-2.5 rounded-xl glass-input uppercase font-mono text-brand-400">
-        </div>
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Custom Nickname (Optional)</label>
-          <input id="newPeerNicknameInput" type="text" placeholder="e.g. Alex" class="w-full text-xs px-4 py-2.5 rounded-xl glass-input text-white">
-        </div>
-      </div>
-
-      <div class="flex space-x-2 pt-2">
-        <button onclick="closeNewChatModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Cancel</button>
-        <button onclick="startNewChatFromModal()" class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-brand-500/20">
-          Connect
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal 4: Edit Contact Nickname Modal -->
-  <div id="nicknameModal" class="modal-backdrop fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-sm rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-800">
-      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-sm sm:text-base flex items-center space-x-2">
-          <i data-lucide="edit-3" class="w-4 h-4 text-brand-400"></i>
-          <span>Set Custom Nickname</span>
-        </h3>
-        <button onclick="closeNicknameModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="text-left space-y-2">
-        <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Nickname</label>
-        <input id="editNicknameInput" type="text" placeholder="Enter contact nickname..." class="w-full text-xs px-4 py-2.5 rounded-xl glass-input text-white">
-      </div>
-
-      <div class="flex space-x-2 pt-2">
-        <button onclick="removeNickname()" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-red-400 text-xs font-semibold transition border border-slate-700">Remove</button>
-        <button onclick="saveNickname()" class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-brand-500/20">
-          Save Nickname
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal 5: Edit Profile & Security Modal -->
-  <div id="profileModal" class="modal-backdrop fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-md rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-800 max-h-[90vh] overflow-y-auto">
-      
-      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-sm sm:text-base flex items-center space-x-2">
-          <i data-lucide="user-cog" class="w-4 h-4 text-brand-400"></i>
-          <span>Profile & Account Security</span>
-        </h3>
-        <button onclick="closeProfileModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="space-y-3 text-left">
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Display Name</label>
-          <input id="profileDisplayNameInput" type="text" class="w-full text-xs px-4 py-2.5 rounded-xl glass-input text-white">
-        </div>
-
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Your Persistent FLASH ID</label>
-          <input id="profileFlashIdReadonly" type="text" readonly class="w-full font-mono text-xs px-4 py-2.5 rounded-xl glass-input bg-slate-900/90 text-brand-400 cursor-not-allowed">
-        </div>
-
-        <!-- Security Backup Section -->
-        <div class="p-3 bg-slate-900/90 rounded-2xl border border-slate-800 space-y-3">
-          <div class="flex items-center justify-between">
-            <h4 class="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-              <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
-              <span>Account Recovery Mnemonic</span>
-            </h4>
-            <button onclick="toggleRecoveryPhraseVisibility()" class="text-[10px] text-brand-400 hover:underline">
-              <span id="togglePhraseBtnText">Show Words</span>
-            </button>
-          </div>
-
-          <!-- Secret Phrase Box -->
-          <div id="recoveryPhraseBox" class="p-2.5 bg-slate-950 rounded-xl border border-slate-800/80 hidden">
-            <p id="recoveryPhraseDisplay" class="font-mono text-xs text-amber-300 leading-relaxed select-all break-words"></p>
-            <p class="text-[10px] text-slate-500 mt-2">Save these 12 words to recover your FLASH ID and contacts if your browser cache clears.</p>
-          </div>
-
-          <!-- PIN Lock Settings -->
-          <div>
-            <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Security PIN (Optional - 4 to 6 Digits)</label>
-            <input id="securityPinInput" type="password" maxlength="6" placeholder="e.g. 1234" class="w-full text-xs px-3 py-2 rounded-xl glass-input font-mono text-white tracking-widest">
-          </div>
-
-          <div class="grid grid-cols-2 gap-2 pt-1">
-            <button onclick="copyRecoveryPhrase()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition border border-slate-700 flex items-center justify-center space-x-1.5">
-              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-              <span>Copy Phrase</span>
-            </button>
-            <button onclick="downloadEncryptedBackupFile()" class="px-3 py-2 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 font-semibold text-xs transition flex items-center justify-center space-x-1.5">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i>
-              <span>Export .flash</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex space-x-2 pt-2">
-        <button onclick="openRestoreAccountModal()" class="px-3 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold transition border border-slate-700 flex items-center space-x-1">
-          <i data-lucide="key-round" class="w-3.5 h-3.5"></i>
-          <span>Restore ID</span>
-        </button>
-        <button onclick="saveProfileSettings()" class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-brand-500/20">
-          Save Settings
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal 6: Account Restoration & Verification -->
-  <div id="restoreAccountModal" class="modal-backdrop fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="glass-panel w-full max-w-md rounded-3xl p-5 sm:p-6 space-y-4 shadow-2xl border border-slate-800">
-      
-      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
-        <h3 class="font-bold text-slate-200 text-sm sm:text-base flex items-center space-x-2">
-          <i data-lucide="key-round" class="w-4 h-4 text-amber-400"></i>
-          <span>Restore FLASH Account</span>
-        </h3>
-        <button onclick="closeRestoreAccountModal()" class="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <!-- Mode Selector Tabs -->
-      <div class="flex p-1 bg-slate-900 rounded-xl border border-slate-800">
-        <button id="tabMnemonicBtn" onclick="switchRestoreTab('phrase')" class="flex-1 py-1.5 rounded-lg text-xs font-semibold transition bg-brand-500/20 text-brand-300 border border-brand-500/30">
-          12-Word Phrase
-        </button>
-        <button id="tabFileBtn" onclick="switchRestoreTab('file')" class="flex-1 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
-          Backup File (.flash)
-        </button>
-      </div>
-
-      <!-- Phrase Input View -->
-      <div id="restorePhraseView" class="space-y-3">
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Enter 12-Word Secret Recovery Phrase</label>
-          <textarea id="restorePhraseInput" rows="3" placeholder="paste your 12 secret words separated by spaces..." class="w-full font-mono text-xs p-3 rounded-xl glass-input text-amber-300 placeholder-slate-600 resize-none"></textarea>
-        </div>
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Security PIN (If set)</label>
-          <input id="restorePinInput" type="password" maxlength="6" placeholder="PIN code (optional)" class="w-full text-xs px-3 py-2.5 rounded-xl glass-input font-mono text-white">
-        </div>
-      </div>
-
-      <!-- File Import View -->
-      <div id="restoreFileView" class="space-y-3 hidden">
-        <div onclick="document.getElementById('backupFileInput').click()" class="border-2 border-dashed border-slate-700 hover:border-brand-500/60 rounded-2xl p-6 text-center cursor-pointer transition bg-slate-900/50 space-y-2">
-          <i data-lucide="file-up" class="w-8 h-8 mx-auto text-brand-400"></i>
-          <p id="backupFileNameDisplay" class="text-xs font-semibold text-slate-300">Click or tap to upload .flash file</p>
-          <p class="text-[10px] text-slate-500">Supports exported FLASHSHARE backup JSON files</p>
-        </div>
-        <input id="backupFileInput" type="file" accept=".flash,.json" class="hidden" onchange="handleBackupFileChosen(event)">
-        
-        <div>
-          <label class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Security PIN (If file is PIN locked)</label>
-          <input id="restoreFilePinInput" type="password" maxlength="6" placeholder="Enter file PIN" class="w-full text-xs px-3 py-2.5 rounded-xl glass-input font-mono text-white">
-        </div>
-      </div>
-
-      <div class="flex space-x-2 pt-2">
-        <button onclick="closeRestoreAccountModal()" class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Cancel</button>
-        <button onclick="processAccountRestoration()" class="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-slate-950 font-bold text-xs transition shadow-lg shadow-brand-500/20">
-          Verify & Restore
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal 7: Fullscreen Image Lightbox Preview -->
-  <div id="lightboxModal" class="modal-backdrop fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
-    <div class="absolute top-4 right-4 flex items-center space-x-2 z-10">
-      <a id="lightboxDownloadBtn" download="flashshare_image.png" href="#" class="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition flex items-center space-x-2 text-xs font-semibold">
-        <i data-lucide="download" class="w-4 h-4"></i>
-        <span class="hidden sm:inline">Download</span>
-      </a>
-      <button onclick="closeLightboxModal()" class="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-    </div>
-
-    <div class="max-w-5xl max-h-[85vh] w-full flex items-center justify-center p-2">
-      <img id="lightboxImage" src="" alt="Preview" class="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-slate-800">
-    </div>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FLASHSHARE — Instant P2P Messenger & File Transfer</title>
     
-    <p id="lightboxCaption" class="mt-3 text-xs font-mono text-slate-400 text-center px-4"></p>
-  </div>
-
-  <!-- Toast Notifications Container -->
-  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none max-w-xs sm:max-w-sm w-full px-2"></div>
-
-  <!-- Application Logic JavaScript -->
-  <script>
-    // Global State
-    const PEER_PREFIX = 'FLASHSHARE-ROOM-V2-';
-    let myFlashId = '';
-    let myDisplayName = 'Anonymous Peer';
-    let myRecoveryPhrase = '';
-    let mySecurityPin = '';
-    let peer = null;
-
-    let contacts = {}; // Format: { [peerId]: { nickname, lastMessage, unreadCount, isOnline } }
-    let messages = {}; // Format: { [peerId]: [ { id, sender, text, fileData, fileType, timestamp } ] }
-    let activePeerId = null;
-    let connections = {}; // Live PeerJS DataConnections
-    let isMobileSidebarOpen = false;
-
-    // Wordlist for 12-Word Mnemonic Generation
-    const WORDLIST = [
-      "alpha", "beacon", "cipher", "delta", "echo", "falcon", "galaxy", "harbor", "matrix", "orbit",
-      "pioneer", "quantum", "shadow", "titan", "vector", "zenith", "crystal", "phoenix", "aurora", "vortex",
-      "nebula", "sonic", "hyper", "pulse", "starlight", "prism", "velvet", "cobalt", "amber", "obsidian",
-      "emerald", "plasma", "dynamo", "lunar", "solar", "comet", "astral", "siren", "nexus", "vertex",
-      "radiant", "thunder", "mirage", "horizon", "element", "infinity", "vanguard", "eclipse", "spark", "blaze"
-    ];
-
-    let pendingBackupFileContent = null;
-    let restoreMode = 'phrase';
-
-    // Voice Recorder state
-    let mediaRecorder = null;
-    let audioChunks = [];
-    let voiceRecordingTimer = null;
-    let voiceSeconds = 0;
-
-    // Camera Scanner state
-    let qrVideoStream = null;
-    let qrScanAnimation = null;
-
-    // Initialize App
-    window.addEventListener('DOMContentLoaded', async () => {
-      if (window.lucide) lucide.createIcons();
-      await initUserSession();
-      loadStoredData();
-      initPeerJS();
-      setupDragAndDrop();
-      setupPasteListener();
-      renderContactsList();
-      updateGlobalUnreadBadge();
-
-      // Check URL parameters for direct QR scan room connection
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlCode = urlParams.get('code');
-      if (urlCode && urlCode !== myFlashId) {
-        startNewChat(urlCode.toUpperCase());
-      }
-    });
-
-    // Mobile Sidebar Drawer Management
-    function toggleSidebarMobile() {
-      if (isMobileSidebarOpen) {
-        closeSidebarMobile();
-      } else {
-        openSidebarMobile();
-      }
-    }
-
-    function openSidebarMobile() {
-      const sidebar = document.getElementById('sidebar');
-      const backdrop = document.getElementById('sidebarBackdrop');
-      sidebar.classList.remove('-translate-x-full');
-      backdrop.classList.remove('pointer-events-none', 'opacity-0');
-      backdrop.classList.add('pointer-events-auto', 'opacity-100');
-      isMobileSidebarOpen = true;
-    }
-
-    function closeSidebarMobile() {
-      const sidebar = document.getElementById('sidebar');
-      const backdrop = document.getElementById('sidebarBackdrop');
-      sidebar.classList.add('-translate-x-full');
-      backdrop.classList.remove('pointer-events-auto', 'opacity-100');
-      backdrop.classList.add('pointer-events-none', 'opacity-0');
-      isMobileSidebarOpen = false;
-    }
-
-    // Cryptographic & Account Helper Functions
-    async function sha256(str) {
-      const buffer = new TextEncoder().encode(str);
-      const hash = await crypto.subtle.digest('SHA-256', buffer);
-      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
-    async function deriveFlashIdFromPhrase(phrase) {
-      const normalized = phrase.trim().toLowerCase().replace(/\s+/g, ' ');
-      const hash = await sha256('FLASHSHARE_SALT_' + normalized);
-      const suffix = hash.substring(0, 5).toUpperCase();
-      return 'FLASH-' + suffix;
-    }
-
-    function generateMnemonicPhrase() {
-      const phrase = [];
-      const cryptoArray = new Uint32Array(12);
-      crypto.getRandomValues(cryptoArray);
-      for (let i = 0; i < 12; i++) {
-        phrase.push(WORDLIST[cryptoArray[i] % WORDLIST.length]);
-      }
-      return phrase.join(' ');
-    }
-
-    // 1. Session & Storage Management
-    async function initUserSession() {
-      let storedId = localStorage.getItem('flashshare_my_id');
-      let storedPhrase = localStorage.getItem('flashshare_my_phrase');
-
-      if (!storedPhrase) {
-        storedPhrase = generateMnemonicPhrase();
-        localStorage.setItem('flashshare_my_phrase', storedPhrase);
-      }
-      myRecoveryPhrase = storedPhrase;
-
-      if (!storedId) {
-        storedId = await deriveFlashIdFromPhrase(myRecoveryPhrase);
-        localStorage.setItem('flashshare_my_id', storedId);
-      }
-      myFlashId = storedId;
-
-      mySecurityPin = localStorage.getItem('flashshare_security_pin') || '';
-
-      let storedName = localStorage.getItem('flashshare_my_name');
-      if (!storedName) {
-        storedName = 'User ' + myFlashId.slice(-4);
-        localStorage.setItem('flashshare_my_name', storedName);
-      }
-      myDisplayName = storedName;
-
-      // Update UI Header & Settings Modal
-      document.getElementById('myFlashIdDisplay').innerText = myFlashId;
-      document.getElementById('myAvatarDisplay').innerText = myDisplayName.charAt(0).toUpperCase();
-      document.getElementById('modalFlashIdText').innerText = myFlashId;
-      document.getElementById('profileFlashIdReadonly').value = myFlashId;
-      document.getElementById('profileDisplayNameInput').value = myDisplayName;
-      document.getElementById('recoveryPhraseDisplay').innerText = myRecoveryPhrase;
-      document.getElementById('securityPinInput').value = mySecurityPin;
-    }
-
-    function loadStoredData() {
-      const savedContacts = localStorage.getItem(`flashshare_contacts_${myFlashId}`);
-      if (savedContacts) {
-        try { contacts = JSON.parse(savedContacts); } catch (e) {}
-      }
-
-      const savedMessages = localStorage.getItem(`flashshare_messages_${myFlashId}`);
-      if (savedMessages) {
-        try { messages = JSON.parse(savedMessages); } catch (e) {}
-      }
-    }
-
-    function persistData() {
-      localStorage.setItem(`flashshare_contacts_${myFlashId}`, JSON.stringify(contacts));
-      localStorage.setItem(`flashshare_messages_${myFlashId}`, JSON.stringify(messages));
-    }
-
-    // 2. PeerJS WebRTC Connection
-    function initPeerJS() {
-      if (typeof Peer === 'undefined') return;
-      const fullPeerId = PEER_PREFIX + myFlashId;
-
-      if (peer) peer.destroy();
-
-      peer = new Peer(fullPeerId, { debug: 1 });
-
-      peer.on('open', (id) => {
-        showToast('FLASHSHARE Network Connected!', 'success');
-      });
-
-      peer.on('connection', (conn) => {
-        setupIncomingConnection(conn);
-      });
-
-      peer.on('error', (err) => {
-        console.warn('PeerJS Error:', err.type);
-        if (err.type === 'unavailable-id') {
-          showToast('Session conflict. Re-initializing...', 'info');
+    <!-- Dynamic SVG Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2306b6d4'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        flash: {
+                            50: '#ecfeff',
+                            100: '#cffafe',
+                            400: '#22d3ee',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            900: '#164e63',
+                            accent: '#a855f7'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(6, 182, 212, 0.4), 0 0 20px rgba(168, 85, 247, 0.2)' },
+                            '100%': { boxShadow: '0 0 15px rgba(6, 182, 212, 0.8), 0 0 30px rgba(168, 85, 247, 0.5)' }
+                        }
+                    }
+                }
+            }
         }
-      });
-    }
+    </script>
+    
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    function connectToPeer(remoteId) {
-      if (!peer || peer.destroyed) return;
-      const fullRemoteId = PEER_PREFIX + remoteId;
+    <!-- Third Party Libraries -->
+    <!-- PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- jsQR for live camera decoding -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
-      if (connections[remoteId] && connections[remoteId].open) return;
-
-      const conn = peer.connect(fullRemoteId, { reliable: true });
-      setupOutgoingConnection(conn, remoteId);
-    }
-
-    function setupOutgoingConnection(conn, remoteId) {
-      connections[remoteId] = conn;
-
-      conn.on('open', () => {
-        updateContactStatus(remoteId, true);
-        showToast(`Connected to ${getContactDisplayName(remoteId)}`, 'success');
-      });
-
-      conn.on('data', (data) => {
-        handleIncomingData(remoteId, data);
-      });
-
-      conn.on('close', () => {
-        updateContactStatus(remoteId, false);
-      });
-
-      conn.on('error', (err) => {
-        updateContactStatus(remoteId, false);
-      });
-    }
-
-    function setupIncomingConnection(conn) {
-      const remoteId = conn.peer.replace(PEER_PREFIX, '');
-      connections[remoteId] = conn;
-
-      conn.on('open', () => {
-        ensureContactExists(remoteId);
-        updateContactStatus(remoteId, true);
-        showToast(`Incoming link from ${getContactDisplayName(remoteId)}`, 'info');
-      });
-
-      conn.on('data', (data) => {
-        handleIncomingData(remoteId, data);
-      });
-
-      conn.on('close', () => {
-        updateContactStatus(remoteId, false);
-      });
-    }
-
-    function updateContactStatus(peerId, isOnline) {
-      ensureContactExists(peerId);
-      contacts[peerId].isOnline = isOnline;
-      persistData();
-      renderContactsList();
-
-      if (activePeerId === peerId) {
-        const statusEl = document.getElementById('activeConnectionStatus');
-        if (statusEl) {
-          statusEl.innerHTML = isOnline 
-            ? `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-emerald-400">Connected</span>`
-            : `<span class="w-2 h-2 rounded-full bg-slate-500"></span><span class="text-slate-400">Disconnected</span>`;
-        }
-      }
-    }
-
-    function reconnectActivePeer() {
-      if (!activePeerId) return;
-      showToast(`Reconnecting to ${getContactDisplayName(activePeerId)}...`, 'info');
-      connectToPeer(activePeerId);
-    }
-
-    // 3. Data Handling & Messaging System
-    function handleIncomingData(senderId, data) {
-      ensureContactExists(senderId);
-
-      if (data.type === 'CHAT_MESSAGE') {
-        const msgObj = {
-          id: data.id || ('msg_' + Date.now()),
-          sender: senderId,
-          text: data.text || '',
-          fileData: data.fileData || null,
-          fileName: data.fileName || null,
-          fileType: data.fileType || null,
-          timestamp: data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-
-        if (!messages[senderId]) messages[senderId] = [];
-        messages[senderId].push(msgObj);
-
-        contacts[senderId].lastMessage = data.fileData ? '📷 Attachment' : data.text;
-        if (activePeerId !== senderId) {
-          contacts[senderId].unreadCount = (contacts[senderId].unreadCount || 0) + 1;
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f3f4f6;
+            overflow: hidden;
         }
 
-        persistData();
-        renderContactsList();
-        updateGlobalUnreadBadge();
-
-        if (activePeerId === senderId) {
-          appendMessageBubble(msgObj);
-          scrollChatToBottom();
-        }
-      }
-    }
-
-    function handleSendMessage(e) {
-      e.preventDefault();
-      const input = document.getElementById('messageInput');
-      const text = input.value.trim();
-      if (!text || !activePeerId) return;
-
-      dispatchMessage({ text: text });
-      input.value = '';
-    }
-
-    function dispatchMessage(payload) {
-      if (!activePeerId) return;
-
-      const msgObj = {
-        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        sender: 'me',
-        text: payload.text || '',
-        fileData: payload.fileData || null,
-        fileName: payload.fileName || null,
-        fileType: payload.fileType || null,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-
-      if (!messages[activePeerId]) messages[activePeerId] = [];
-      messages[activePeerId].push(msgObj);
-
-      contacts[activePeerId].lastMessage = payload.fileData ? '📷 Attachment' : payload.text;
-      persistData();
-
-      appendMessageBubble(msgObj);
-      scrollChatToBottom();
-      renderContactsList();
-
-      // Send over WebRTC if connected
-      const conn = connections[activePeerId];
-      if (conn && conn.open) {
-        conn.send({
-          type: 'CHAT_MESSAGE',
-          id: msgObj.id,
-          text: msgObj.text,
-          fileData: msgObj.fileData,
-          fileName: msgObj.fileName,
-          fileType: msgObj.fileType,
-          timestamp: msgObj.timestamp
-        });
-      } else {
-        showToast('Peer offline. Message saved locally.', 'info');
-      }
-    }
-
-    // 4. Per-Message Deletion & One-Way Clear Chat History
-    function deleteSingleMessage(msgId) {
-      if (!activePeerId || !messages[activePeerId]) return;
-
-      messages[activePeerId] = messages[activePeerId].filter(m => m.id !== msgId);
-      
-      const remaining = messages[activePeerId];
-      contacts[activePeerId].lastMessage = remaining.length > 0 
-        ? (remaining[remaining.length - 1].fileData ? '📷 Attachment' : remaining[remaining.length - 1].text)
-        : 'No messages yet';
-
-      persistData();
-      renderActiveChatStream();
-      renderContactsList();
-      showToast('Message removed locally', 'info');
-    }
-
-    function confirmClearActiveChatHistory() {
-      if (!activePeerId) return;
-      const name = getContactDisplayName(activePeerId);
-
-      messages[activePeerId] = [];
-      contacts[activePeerId].lastMessage = 'Chat history cleared';
-      persistData();
-      renderActiveChatStream();
-      renderContactsList();
-      showToast(`Cleared history with ${name}`, 'info');
-    }
-
-    function confirmDeleteActiveContact() {
-      if (!activePeerId) return;
-
-      delete contacts[activePeerId];
-      delete messages[activePeerId];
-      
-      if (connections[activePeerId]) {
-        connections[activePeerId].close();
-        delete connections[activePeerId];
-      }
-
-      activePeerId = null;
-      persistData();
-      renderContactsList();
-      updateGlobalUnreadBadge();
-      
-      document.getElementById('activeChatInterface').classList.add('hidden');
-      document.getElementById('emptyChatState').classList.remove('hidden');
-      showToast('Contact removed', 'info');
-    }
-
-    // 5. Sidebar Contacts Rendering & Nicknames
-    function ensureContactExists(peerId) {
-      if (!contacts[peerId]) {
-        contacts[peerId] = {
-          nickname: '',
-          lastMessage: 'New contact added',
-          unreadCount: 0,
-          isOnline: false
-        };
-      }
-    }
-
-    function getContactDisplayName(peerId) {
-      if (contacts[peerId] && contacts[peerId].nickname) {
-        return contacts[peerId].nickname;
-      }
-      return peerId;
-    }
-
-    function renderContactsList() {
-      const container = document.getElementById('chatsList');
-      const searchVal = document.getElementById('searchInput').value.toLowerCase();
-      const keys = Object.keys(contacts);
-
-      document.getElementById('chatCountBadge').innerText = keys.length;
-
-      if (keys.length === 0) {
-        container.innerHTML = `
-          <div class="py-8 text-center text-slate-500 space-y-2">
-            <i data-lucide="user-plus" class="w-8 h-8 mx-auto text-slate-600"></i>
-            <p class="text-xs font-medium">No contacts yet</p>
-            <p class="text-[11px] text-slate-600">Click "New Chat" to connect</p>
-          </div>
-        `;
-        if (window.lucide) lucide.createIcons();
-        return;
-      }
-
-      container.innerHTML = '';
-
-      keys.forEach(peerId => {
-        const contact = contacts[peerId];
-        const displayName = getContactDisplayName(peerId);
-
-        if (searchVal && !displayName.toLowerCase().includes(searchVal) && !peerId.toLowerCase().includes(searchVal)) {
-          return;
+        /* Glassmorphism Styles */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        const isActive = activePeerId === peerId;
-        const card = document.createElement('div');
-        
-        card.className = `p-3 rounded-xl cursor-pointer transition flex items-center justify-between group ${
-          isActive ? 'bg-brand-500/15 border border-brand-500/40' : 'hover:bg-slate-800/50 border border-transparent'
-        }`;
+        .glass-panel-interactive {
+            background: rgba(20, 30, 50, 0.5);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
 
-        card.onclick = () => selectActiveChat(peerId);
+        .glass-panel-interactive:hover {
+            background: rgba(30, 45, 75, 0.7);
+            border-color: rgba(6, 182, 212, 0.3);
+        }
 
-        card.innerHTML = `
-          <div class="flex items-center space-x-3 min-w-0">
-            <div class="relative shrink-0">
-              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent-600 to-brand-500 flex items-center justify-center text-white font-bold text-sm shadow-inner">
-                ${displayName.charAt(0).toUpperCase()}
-              </div>
-              <span class="w-2.5 h-2.5 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-slate-900 ${
-                contact.isOnline ? 'bg-emerald-400' : 'bg-slate-600'
-              }"></span>
+        .glass-modal {
+            background: rgba(10, 15, 28, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(6, 182, 212, 0.5);
+        }
+
+        /* Modal display rule strictly guarding pointer events */
+        .modal-overlay {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease-in-out;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="h-full w-full select-none">
+
+    <!-- Interactive Ambient Particle Canvas -->
+    <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+    <!-- Main Container -->
+    <div class="relative z-10 flex h-full w-full overflow-hidden p-0 sm:p-3 md:p-4 gap-4">
+
+        <!-- Sidebar Drawer Overlay (Mobile Backdrop) -->
+        <div id="sidebarBackdrop" onclick="app.closeSidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 transition-opacity opacity-0 pointer-events-none md:hidden"></div>
+
+        <!-- LEFT SIDEBAR: Active Chats, Profile, Actions -->
+        <aside id="sidebar" class="fixed md:relative inset-y-0 left-0 z-40 w-[85%] max-w-[340px] md:w-80 lg:w-96 h-full flex flex-col glass-panel md:rounded-2xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out shadow-2xl">
+            
+            <!-- Sidebar Header: Profile Info -->
+            <div class="p-4 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="relative">
+                        <div id="userAvatar" class="w-11 h-11 rounded-full bg-gradient-to-tr from-flash-600 to-flash-accent flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                            F
+                        </div>
+                        <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
+                    </div>
+                    <div>
+                        <div class="flex items-center space-x-1">
+                            <h2 id="userDisplayName" class="font-semibold text-white text-base leading-tight">Flash User</h2>
+                            <button onclick="app.openModal('nicknameModal')" class="text-slate-400 hover:text-flash-400 text-xs p-1" title="Edit Profile Name">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-1.5 mt-0.5">
+                            <span id="userFlashId" class="text-xs font-mono text-flash-400 font-medium tracking-wider">FLASH-XXXXX</span>
+                            <button onclick="app.copyFlashId()" class="text-slate-400 hover:text-white text-xs" title="Copy Flash ID">
+                                <i class="fa-regular fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Account Actions Dropdown Button -->
+                <div class="flex items-center space-x-1">
+                    <button onclick="app.openModal('myQrModal')" class="p-2 text-slate-300 hover:text-flash-400 hover:bg-white/5 rounded-lg transition" title="My QR Code">
+                        <i class="fa-solid fa-qrcode text-lg"></i>
+                    </button>
+                    <button onclick="app.openModal('accountSettingsModal')" class="p-2 text-slate-300 hover:text-flash-400 hover:bg-white/5 rounded-lg transition" title="Backup & Restore">
+                        <i class="fa-solid fa-shield-halved text-lg"></i>
+                    </button>
+                </div>
             </div>
-            <div class="min-w-0">
-              <div class="flex items-center space-x-1.5">
-                <h4 class="font-bold text-xs text-slate-200 truncate ${isActive ? 'text-brand-400' : ''}">${displayName}</h4>
-              </div>
-              <p class="text-[11px] text-slate-400 truncate mt-0.5">${contact.lastMessage || 'No messages'}</p>
+
+            <!-- Contact Addition / QR Scanner Buttons -->
+            <div class="p-3 space-y-2 border-b border-white/5">
+                <div class="flex space-x-2">
+                    <input type="text" id="addContactInput" placeholder="Enter Flash ID (e.g. FLASH-9X2K4)" class="flex-1 bg-slate-900/60 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-flash-500 font-mono">
+                    <button onclick="app.addContactFromInput()" class="bg-flash-600 hover:bg-flash-500 text-white px-3 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Add</span>
+                    </button>
+                </div>
+
+                <button onclick="app.openCameraScanner()" class="w-full glass-panel-interactive text-slate-200 py-2 px-3 rounded-xl text-xs font-medium flex items-center justify-center space-x-2 border border-flash-500/20 text-flash-400 hover:text-white">
+                    <i class="fa-solid fa-camera"></i>
+                    <span>Scan QR Code to Connect</span>
+                </button>
             </div>
-          </div>
 
-          ${contact.unreadCount > 0 ? `
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-500 text-slate-950 shrink-0 shadow">
-              ${contact.unreadCount}
-            </span>
-          ` : ''}
-        `;
-
-        container.appendChild(card);
-      });
-
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function updateGlobalUnreadBadge() {
-      let totalUnread = 0;
-      Object.keys(contacts).forEach(id => {
-        totalUnread += (contacts[id].unreadCount || 0);
-      });
-
-      const badge = document.getElementById('mobileGlobalUnreadBadge');
-      if (totalUnread > 0) {
-        badge.innerText = totalUnread > 9 ? '9+' : totalUnread;
-        badge.classList.remove('hidden');
-        badge.classList.add('flex');
-      } else {
-        badge.classList.add('hidden');
-        badge.classList.remove('flex');
-      }
-    }
-
-    function filterContacts() {
-      renderContactsList();
-    }
-
-    function selectActiveChat(peerId) {
-      activePeerId = peerId;
-      if (contacts[peerId]) {
-        contacts[peerId].unreadCount = 0;
-      }
-      persistData();
-      renderContactsList();
-      updateGlobalUnreadBadge();
-
-      closeSidebarMobile();
-
-      document.getElementById('emptyChatState').classList.add('hidden');
-      document.getElementById('activeChatInterface').classList.remove('hidden');
-
-      const displayName = getContactDisplayName(peerId);
-      document.getElementById('activePeerName').innerText = displayName;
-      document.getElementById('activePeerId').innerText = peerId;
-      document.getElementById('activePeerAvatar').innerText = displayName.charAt(0).toUpperCase();
-
-      const isOnline = contacts[peerId]?.isOnline || false;
-      updateContactStatus(peerId, isOnline);
-
-      if (!connections[peerId] || !connections[peerId].open) {
-        connectToPeer(peerId);
-      }
-
-      renderActiveChatStream();
-      scrollChatToBottom();
-    }
-
-    function renderActiveChatStream() {
-      const container = document.getElementById('messagesContainer');
-      container.innerHTML = '';
-
-      const chatMsgs = messages[activePeerId] || [];
-
-      if (chatMsgs.length === 0) {
-        container.innerHTML = `
-          <div class="py-12 text-center text-slate-500 space-y-2">
-            <i data-lucide="sparkles" class="w-8 h-8 mx-auto text-slate-600"></i>
-            <p class="text-xs font-medium">Beginning of direct end-to-end conversation</p>
-          </div>
-        `;
-        if (window.lucide) lucide.createIcons();
-        return;
-      }
-
-      chatMsgs.forEach(msg => {
-        appendMessageBubble(msg);
-      });
-
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function appendMessageBubble(msg) {
-      const container = document.getElementById('messagesContainer');
-      const isMe = msg.sender === 'me';
-
-      const bubbleWrap = document.createElement('div');
-      bubbleWrap.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'} group message-hover relative my-1`;
-
-      let mediaHTML = '';
-      if (msg.fileData) {
-        if (msg.fileType && msg.fileType.startsWith('image/')) {
-          mediaHTML = `
-            <div class="relative rounded-xl overflow-hidden mb-1.5 cursor-pointer border border-slate-700/60 max-w-xs group/img" onclick="openLightbox('${msg.fileData}', '${msg.fileName}')">
-              <img src="${msg.fileData}" alt="Attachment" class="w-full max-h-60 object-cover">
-              <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center">
-                <i data-lucide="maximize-2" class="w-6 h-6 text-white"></i>
-              </div>
+            <!-- Active Chats List Header & Filter -->
+            <div class="px-4 pt-3 pb-1 flex items-center justify-between text-xs text-slate-400">
+                <span class="font-semibold uppercase tracking-wider text-[10px]">Active Chats</span>
+                <span id="unreadTotalBadge" class="bg-flash-500/20 text-flash-400 px-2 py-0.5 rounded-full font-bold text-[10px] hidden">0 unread</span>
             </div>
-          `;
-        } else if (msg.fileType && msg.fileType.startsWith('audio/')) {
-          mediaHTML = `
-            <div class="mb-1.5">
-              <audio controls src="${msg.fileData}" class="max-w-[220px] sm:max-w-xs rounded-xl"></audio>
-            </div>
-          `;
-        }
-      }
 
-      bubbleWrap.innerHTML = `
-        <div class="flex items-center space-x-1.5 max-w-[88%] sm:max-w-[75%]">
-          ${isMe ? `
-            <button onclick="deleteSingleMessage('${msg.id}')" title="Delete message locally" class="msg-actions opacity-0 transition p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-red-400 shrink-0">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <!-- Contacts Scroll List -->
+            <div id="contactsList" class="flex-1 overflow-y-auto p-2 space-y-1">
+                <!-- Dynamic Content Here -->
+            </div>
+
+            <!-- Peer Network Connection Status Footer -->
+            <div class="p-3 border-t border-white/10 flex items-center justify-between text-xs bg-slate-950/40">
+                <div class="flex items-center space-x-2">
+                    <span id="netStatusDot" class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="netStatusText" class="text-slate-400 text-[11px]">Connecting P2P...</span>
+                </div>
+                <button onclick="app.reconnectPeer()" class="text-slate-400 hover:text-white text-[11px] underline">
+                    Refresh
+                </button>
+            </div>
+        </aside>
+
+        <!-- RIGHT MAIN WORKSPACE: Active Chat Window or Empty Splash -->
+        <main class="flex-1 h-full glass-panel rounded-none sm:rounded-2xl flex flex-col overflow-hidden relative">
+            
+            <!-- CHAT HEADER -->
+            <header id="chatHeader" class="h-16 border-b border-white/10 px-4 flex items-center justify-between bg-slate-900/40 backdrop-blur-md z-20">
+                <div class="flex items-center space-x-3">
+                    <!-- Mobile Sidebar Toggle -->
+                    <button onclick="app.toggleSidebar()" class="md:hidden p-2 text-slate-300 hover:text-white focus:outline-none relative">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                        <span id="mobileUnreadBadge" class="absolute top-1 right-1 w-2.5 h-2.5 bg-flash-500 rounded-full hidden"></span>
+                    </button>
+
+                    <div class="flex items-center space-x-3 cursor-pointer" onclick="app.openContactSettings()">
+                        <div id="activeChatAvatar" class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-flash-400 text-sm border border-white/10">
+                            ?
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 id="activeChatTitle" class="font-semibold text-white text-sm">Select a Conversation</h3>
+                                <button id="editNicknameBtn" onclick="event.stopPropagation(); app.openModal('editNicknameModal')" class="text-slate-500 hover:text-flash-400 text-xs hidden">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                            </div>
+                            <p id="activeChatSubtext" class="text-xs text-slate-400 font-mono">No active connection</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Actions Menu -->
+                <div id="activeChatActions" class="flex items-center space-x-1 hidden">
+                    <button onclick="app.clearCurrentChatHistory()" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition text-xs flex items-center space-x-1" title="Clear Local Messages">
+                        <i class="fa-regular fa-trash-can"></i>
+                        <span class="hidden sm:inline">Clear Chat</span>
+                    </button>
+                    <button onclick="app.removeCurrentContact()" class="p-2 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition text-xs" title="Remove Contact">
+                        <i class="fa-solid fa-user-xmark"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- MESSAGES CONTAINER -->
+            <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-3 relative">
+                <!-- Welcome/Empty State Overlay -->
+                <div id="emptyChatSplash" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-4">
+                    <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-flash-600/20 to-flash-accent/20 border border-flash-500/30 flex items-center justify-center text-flash-400 text-3xl shadow-2xl animate-pulse-slow">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
+                    <div class="max-w-md space-y-2">
+                        <h2 class="text-xl font-bold text-white">FLASHSHARE P2P Transfer</h2>
+                        <p class="text-xs text-slate-400 leading-relaxed">
+                            Encrypted, high-speed peer-to-peer file transfer and instant messaging directly between devices using WebRTC. Add a contact using their Flash ID or QR code to start.
+                        </p>
+                    </div>
+                    <div class="flex flex-wrap gap-2 justify-center pt-2">
+                        <button onclick="app.openModal('myQrModal')" class="glass-panel-interactive px-4 py-2 rounded-xl text-xs text-flash-400 flex items-center space-x-2">
+                            <i class="fa-solid fa-qrcode"></i>
+                            <span>Show My QR Code</span>
+                        </button>
+                        <button onclick="app.openModal('accountSettingsModal')" class="glass-panel-interactive px-4 py-2 rounded-xl text-xs text-slate-300 flex items-center space-x-2">
+                            <i class="fa-solid fa-key"></i>
+                            <span>Backup Account</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHAT INPUT BAR -->
+            <div id="chatInputArea" class="p-3 sm:p-4 border-t border-white/10 bg-slate-900/60 backdrop-blur-md opacity-50 pointer-events-none transition-all">
+                
+                <!-- Voice Recording Active UI Overlay -->
+                <div id="voiceRecordingUI" class="hidden flex items-center justify-between bg-rose-950/40 border border-rose-500/30 rounded-xl px-4 py-2.5 mb-2">
+                    <div class="flex items-center space-x-3">
+                        <span class="w-3 h-3 rounded-full bg-rose-500 animate-ping"></span>
+                        <span class="text-xs font-semibold text-rose-300">Recording Audio...</span>
+                        <span id="recordingTimer" class="text-xs font-mono text-white">00:00</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="app.cancelVoiceRecord()" class="text-slate-400 hover:text-white text-xs px-2 py-1">Cancel</button>
+                        <button onclick="app.stopAndSendVoiceRecord()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow">
+                            Send Voice
+                        </button>
+                    </div>
+                </div>
+
+                <form id="chatForm" onsubmit="app.handleSendMessage(event)" class="flex items-center space-x-2">
+                    <!-- File & Image Upload Trigger Buttons -->
+                    <div class="flex items-center space-x-1">
+                        <label class="p-2 text-slate-400 hover:text-flash-400 hover:bg-white/5 rounded-xl cursor-pointer transition" title="Attach Photos or Files">
+                            <i class="fa-solid fa-paperclip text-lg"></i>
+                            <input type="file" id="fileInput" onchange="app.handleFileSelect(event)" class="hidden" multiple>
+                        </label>
+                        <button type="button" onclick="app.triggerGallerySelect()" class="p-2 text-slate-400 hover:text-flash-400 hover:bg-white/5 rounded-xl transition hidden sm:inline-block" title="Photo Gallery">
+                            <i class="fa-regular fa-image text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Textarea Input -->
+                    <input type="text" id="messageInput" placeholder="Type a message or paste images (Ctrl+V)..." class="flex-1 bg-slate-950/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-flash-500 transition" autocomplete="off">
+
+                    <!-- Voice Note Trigger -->
+                    <button type="button" id="voiceRecordBtn" onclick="app.toggleVoiceRecord()" class="p-2.5 text-slate-400 hover:text-rose-400 hover:bg-white/5 rounded-xl transition" title="Record Voice Note">
+                        <i class="fa-solid fa-microphone text-lg"></i>
+                    </button>
+
+                    <!-- Send Button -->
+                    <button type="submit" class="bg-gradient-to-r from-flash-600 to-flash-500 hover:from-flash-500 hover:to-flash-400 text-white p-2.5 rounded-xl shadow-lg transition flex items-center justify-center">
+                        <i class="fa-solid fa-paper-plane text-base px-1"></i>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== MODALS LAYER ==================== -->
+
+    <!-- MY QR CODE MODAL -->
+    <div id="myQrModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay bg-black/70 backdrop-blur-md">
+        <div class="glass-modal max-w-sm w-full rounded-2xl p-6 text-center space-y-4 border border-white/10 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 class="font-bold text-white text-base">My Flash ID & QR Code</h3>
+                <button onclick="app.closeModal('myQrModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-300">Friends can scan this code to instant-pair with your Flash node.</p>
+
+            <div class="bg-white p-4 rounded-xl flex items-center justify-center shadow-inner mx-auto w-48 h-48" id="qrcodeCanvas"></div>
+
+            <div class="bg-slate-900/80 p-3 rounded-xl border border-white/10 flex items-center justify-between">
+                <span id="modalFlashId" class="font-mono text-flash-400 font-bold text-sm tracking-widest">FLASH-XXXXX</span>
+                <button onclick="app.copyFlashId()" class="text-xs bg-flash-600 hover:bg-flash-500 text-white px-3 py-1.5 rounded-lg font-medium">
+                    Copy
+                </button>
+            </div>
+
+            <button onclick="app.closeModal('myQrModal')" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl transition">
+                Hide QR Code
             </button>
-          ` : ''}
-
-          <div class="p-2.5 sm:p-3 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-md ${
-            isMe 
-              ? 'bg-gradient-to-tr from-brand-600 to-brand-500 text-slate-950 font-medium rounded-tr-none' 
-              : 'bg-slate-800/90 text-slate-100 border border-slate-700/60 rounded-tl-none'
-          }">
-            ${mediaHTML}
-            ${msg.text ? `<p class="break-words">${escapeHTML(msg.text)}</p>` : ''}
-            <div class="text-[9px] sm:text-[10px] mt-1 text-right font-mono opacity-60">
-              ${msg.timestamp}
-            </div>
-          </div>
-
-          ${!isMe ? `
-            <button onclick="deleteSingleMessage('${msg.id}')" title="Delete message locally" class="msg-actions opacity-0 transition p-1 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-red-400 shrink-0">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          ` : ''}
         </div>
-      `;
+    </div>
 
-      container.appendChild(bubbleWrap);
-      if (window.lucide) lucide.createIcons();
-    }
+    <!-- LIVE CAMERA QR SCANNER MODAL -->
+    <div id="cameraScannerModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay bg-black/80 backdrop-blur-md">
+        <div class="glass-modal max-w-md w-full rounded-2xl p-6 space-y-4 border border-white/10 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 class="font-bold text-white text-base">Scan Peer Flash QR</h3>
+                <button onclick="app.closeCameraScanner()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
 
-    function scrollChatToBottom() {
-      const container = document.getElementById('messagesContainer');
-      container.scrollTop = container.scrollHeight;
-    }
+            <div class="relative aspect-square w-full rounded-xl overflow-hidden bg-black border border-white/10 flex items-center justify-center">
+                <video id="qrVideo" class="w-full h-full object-cover"></video>
+                <div class="absolute inset-12 border-2 border-dashed border-flash-400/70 rounded-2xl pointer-events-none animate-pulse"></div>
+            </div>
 
-    // 6. Rich Media Sharing (Files, Images, Voice Notes)
-    function handleFileSelect(e) {
-      const files = e.target.files;
-      if (!files || files.length === 0 || !activePeerId) return;
+            <p class="text-xs text-slate-400 text-center">Point your camera at a friend's Flash QR Code to auto-connect.</p>
 
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          dispatchMessage({
-            text: file.name,
-            fileData: evt.target.result,
-            fileName: file.name,
-            fileType: file.type
-          });
-        };
-        reader.readAsDataURL(file);
-      });
+            <button onclick="app.closeCameraScanner()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold rounded-xl transition">
+                Cancel
+            </button>
+        </div>
+    </div>
 
-      e.target.value = '';
-    }
+    <!-- ACCOUNT RESTORE & BACKUP MODAL -->
+    <div id="accountSettingsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay bg-black/70 backdrop-blur-md">
+        <div class="glass-modal max-w-lg w-full rounded-2xl p-6 space-y-5 border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                <h3 class="font-bold text-white text-base"><i class="fa-solid fa-shield-halved text-flash-400 mr-2"></i>Account Security & Backup</h3>
+                <button onclick="app.closeModal('accountSettingsModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
 
-    function setupDragAndDrop() {
-      const windowEl = document.getElementById('chatWindow');
-      const overlay = document.getElementById('dropOverlay');
+            <!-- Account Recovery Code -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between gap-3">
+                    <label class="text-xs font-semibold text-slate-300">Account Recovery Code</label>
+                    <span class="text-[10px] uppercase tracking-wider text-emerald-400">Private • Keep safe</span>
+                </div>
+                <div id="recoveryCodeBox" class="bg-slate-950 p-3 rounded-xl border border-flash-500/25 text-xs font-mono text-flash-300 break-all select-text min-h-12">Your recovery code will appear here.</div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button onclick="app.generateRecoveryCode()" class="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+                        <i class="fa-solid fa-key mr-1"></i> Generate / Show
+                    </button>
+                    <button onclick="app.copyRecoveryCode()" class="py-2 rounded-lg bg-flash-600 hover:bg-flash-500 text-white text-xs font-semibold transition">
+                        <i class="fa-regular fa-copy mr-1"></i> Copy
+                    </button>
+                    <button onclick="app.downloadRecoveryCode()" class="py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+                        <i class="fa-solid fa-download mr-1"></i> Download
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-500 leading-relaxed">Use this code to recover the same Flash ID on another browser. Keep it private. New FS2 codes derive the ID from a strong random secret; older FS1 accounts retain their existing ID format. There is no central account server.</p>
+                <p id="recoveryCodeStatus" class="text-[11px] text-slate-400" role="status"></p>
+            </div>
 
-      ['dragenter', 'dragover'].forEach(name => {
-        windowEl.addEventListener(name, (e) => {
-          e.preventDefault();
-          if (activePeerId) overlay.classList.remove('hidden');
-        });
-      });
+            <!-- Export / Import Buttons -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <button onclick="app.exportFullBackupJson()" class="glass-panel-interactive p-3 rounded-xl text-xs text-white flex flex-col items-center justify-center space-y-1 text-center">
+                    <i class="fa-solid fa-download text-lg text-flash-400"></i>
+                    <span class="font-semibold">Export JSON Backup</span>
+                    <span class="text-[10px] text-slate-400">Saves Flash ID, Contacts & Messages</span>
+                </button>
 
-      ['dragleave', 'drop'].forEach(name => {
-        windowEl.addEventListener(name, (e) => {
-          e.preventDefault();
-          overlay.classList.add('hidden');
-        });
-      });
+                <label class="glass-panel-interactive p-3 rounded-xl text-xs text-white flex flex-col items-center justify-center space-y-1 text-center cursor-pointer">
+                    <i class="fa-solid fa-upload text-lg text-flash-accent"></i>
+                    <span class="font-semibold">Import .flash File</span>
+                    <span class="text-[10px] text-slate-400">Restores state from JSON file</span>
+                    <input type="file" accept=".flash,.json" onchange="app.importBackupJson(event)" class="hidden">
+                </label>
+            </div>
 
-      windowEl.addEventListener('drop', (e) => {
-        const files = e.dataTransfer.files;
-        if (files && files.length > 0) {
-          handleFileSelect({ target: { files: files } });
-        }
-      });
-    }
+            <!-- Restore with Recovery Code -->
+            <div class="border-t border-white/10 pt-4 space-y-2">
+                <label class="text-xs font-semibold text-slate-300">Recover an Existing Flash ID</label>
+                <textarea id="restoreCodeInput" rows="3" autocomplete="off" spellcheck="false" placeholder="Paste your full FS1 recovery code here..." class="w-full bg-slate-950 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-flash-500 font-mono"></textarea>
+                <button onclick="app.restoreAccountFromRecoveryCode()" class="w-full py-2.5 bg-flash-600 hover:bg-flash-500 text-white text-xs font-semibold rounded-xl transition">
+                    <i class="fa-solid fa-rotate-left mr-1"></i> Restore Flash Account
+                </button>
+                <p class="text-[11px] text-slate-500">Restoring switches this browser to the recovered Flash ID. Export a backup first if you need to preserve local chats.</p>
+            </div>
+        </div>
+    </div>
 
-    function setupPasteListener() {
-      document.addEventListener('paste', (e) => {
-        if (!activePeerId) return;
-        const items = e.clipboardData?.items;
-        if (!items) return;
+    <!-- PROFILE DISPLAY NAME EDIT MODAL -->
+    <div id="nicknameModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay bg-black/70 backdrop-blur-md">
+        <div class="glass-modal max-w-sm w-full rounded-2xl p-6 space-y-4 border border-white/10 shadow-2xl">
+            <h3 class="font-bold text-white text-base">Set Display Name</h3>
+            <input type="text" id="modalDisplayNameInput" placeholder="Enter display name..." class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-flash-500">
+            <div class="flex space-x-2 pt-2">
+                <button onclick="app.closeModal('nicknameModal')" class="flex-1 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl">Cancel</button>
+                <button onclick="app.saveDisplayName()" class="flex-1 py-2 bg-flash-600 text-white text-xs font-semibold rounded-xl">Save</button>
+            </div>
+        </div>
+    </div>
 
-        for (let item of items) {
-          if (item.type.indexOf('image') !== -1) {
-            const blob = item.getAsFile();
-            handleFileSelect({ target: { files: [blob] } });
-          }
-        }
-      });
-    }
+    <!-- CONTACT NICKNAME EDIT MODAL -->
+    <div id="editNicknameModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay bg-black/70 backdrop-blur-md">
+        <div class="glass-modal max-w-sm w-full rounded-2xl p-6 space-y-4 border border-white/10 shadow-2xl">
+            <h3 class="font-bold text-white text-base">Assign Contact Nickname</h3>
+            <input type="text" id="contactNicknameInput" placeholder="Custom Nickname (e.g. Work PC, Sam)..." class="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-flash-500">
+            <div class="flex space-x-2 pt-2">
+                <button onclick="app.closeModal('editNicknameModal')" class="flex-1 py-2 bg-slate-800 text-slate-300 text-xs rounded-xl">Cancel</button>
+                <button onclick="app.saveContactNickname()" class="flex-1 py-2 bg-flash-600 text-white text-xs font-semibold rounded-xl">Save Nickname</button>
+            </div>
+        </div>
+    </div>
 
-    // Voice Note Recorder
-    async function toggleVoiceRecording() {
-      if (!activePeerId) return;
-      const bar = document.getElementById('voiceRecordingBar');
+    <!-- IMAGE LIGHTBOX MODAL -->
+    <div id="lightboxModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-overlay bg-black/90 backdrop-blur-lg" onclick="app.closeModal('lightboxModal')">
+        <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
+            <img id="lightboxImage" src="" class="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl border border-white/10">
+            <div class="mt-4 flex space-x-4">
+                <a id="lightboxDownloadBtn" download="flashshare_image.png" href="#" class="bg-flash-600 hover:bg-flash-500 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-lg">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Download Original</span>
+                </a>
+                <button onclick="app.closeModal('lightboxModal')" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-xl text-xs font-semibold">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
 
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        stopAndSendVoiceNote();
-        return;
-      }
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // WORD LIST FOR DETERMINISTIC SEED PHRASE GENERATION
+        const SEED_WORDS = [
+            "alpha", "beacon", "cipher", "delta", "echo", "falcon", "grid", "hyper", "ion", "jolt",
+            "krypton", "lunar", "matrix", "nexus", "orbit", "pulse", "quantum", "radar", "shadow", "turbo",
+            "ultra", "vector", "wave", "xenon", "yield", "zenith", "atom", "blaze", "comet", "drift"
+        ];
 
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+        // Set this to your deployed Cloudflare Worker URL after setup. Leave blank to use local-only storage.
+        const FLASHSHARE_CLOUD_API = ''; // Example: https://flashshare-api.your-subdomain.workers.dev
 
-        mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
-        mediaRecorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-          const reader = new FileReader();
-          reader.onload = (evt) => {
-            dispatchMessage({
-              text: '🎤 Voice Note',
-              fileData: evt.target.result,
-              fileName: 'voicenote.webm',
-              fileType: 'audio/webm'
-            });
-          };
-          reader.readAsDataURL(audioBlob);
+        class FlashShareApp {
+            constructor() {
+                this.account = null;
+                this.contacts = {};
+                this.messages = {};
+                this.activeContactId = null;
+                this.peer = null;
+                this.peerConnections = {};
+                this.qrScannerStream = null;
+                this.qrScannerAnim = null;
+                this.mediaRecorder = null;
+                this.audioChunks = [];
+                this.recordingInterval = null;
+                this.recordingSeconds = 0;
+                this.cloudReady = false;
+                this.cloudSyncTimer = null;
+                this.cloudSyncRunning = false;
+                this.cloudSyncQueued = false;
 
-          stream.getTracks().forEach(t => t.stop());
-        };
-
-        mediaRecorder.start();
-        bar.classList.remove('hidden');
-        voiceSeconds = 0;
-        voiceRecordingTimer = setInterval(() => {
-          voiceSeconds++;
-          const mins = String(Math.floor(voiceSeconds / 60)).padStart(2, '0');
-          const secs = String(voiceSeconds % 60).padStart(2, '0');
-          document.getElementById('voiceTimer').innerText = `${mins}:${secs}`;
-        }, 1000);
-
-      } catch (err) {
-        showToast('Microphone access denied or unavailble', 'error');
-      }
-    }
-
-    function cancelVoiceRecording() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        audioChunks = [];
-      }
-      clearInterval(voiceRecordingTimer);
-      document.getElementById('voiceRecordingBar').classList.add('hidden');
-    }
-
-    function stopAndSendVoiceNote() {
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-      }
-      clearInterval(voiceRecordingTimer);
-      document.getElementById('voiceRecordingBar').classList.add('hidden');
-    }
-
-    // 7. Account Backup, Recovery & Export/Import Logic
-    function toggleRecoveryPhraseVisibility() {
-      const box = document.getElementById('recoveryPhraseBox');
-      const btnText = document.getElementById('togglePhraseBtnText');
-
-      if (box.classList.contains('hidden')) {
-        box.classList.remove('hidden');
-        btnText.innerText = 'Hide Words';
-      } else {
-        box.classList.add('hidden');
-        btnText.innerText = 'Show Words';
-      }
-    }
-
-    function copyRecoveryPhrase() {
-      navigator.clipboard.writeText(myRecoveryPhrase).then(() => {
-        showToast('Recovery phrase copied!', 'success');
-      });
-    }
-
-    function downloadEncryptedBackupFile() {
-      const backupObj = {
-        app: 'FLASHSHARE',
-        version: '2.0',
-        flashId: myFlashId,
-        displayName: myDisplayName,
-        recoveryPhrase: myRecoveryPhrase,
-        pin: document.getElementById('securityPinInput').value.trim(),
-        contacts: contacts,
-        timestamp: new Date().toISOString()
-      };
-
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupObj, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `${myFlashId}_backup.flash`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-
-      showToast('Account backup downloaded (.flash)', 'success');
-    }
-
-    function openRestoreAccountModal() {
-      closeProfileModal();
-      openModal('restoreAccountModal');
-    }
-
-    function closeRestoreAccountModal() {
-      closeModal('restoreAccountModal');
-      pendingBackupFileContent = null;
-    }
-
-    function switchRestoreTab(mode) {
-      restoreMode = mode;
-      const phraseBtn = document.getElementById('tabMnemonicBtn');
-      const fileBtn = document.getElementById('tabFileBtn');
-      const phraseView = document.getElementById('restorePhraseView');
-      const fileView = document.getElementById('restoreFileView');
-
-      if (mode === 'phrase') {
-        phraseBtn.className = "flex-1 py-1.5 rounded-lg text-xs font-semibold transition bg-brand-500/20 text-brand-300 border border-brand-500/30";
-        fileBtn.className = "flex-1 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition border-transparent";
-        phraseView.classList.remove('hidden');
-        fileView.classList.add('hidden');
-      } else {
-        fileBtn.className = "flex-1 py-1.5 rounded-lg text-xs font-semibold transition bg-brand-500/20 text-brand-300 border border-brand-500/30";
-        phraseBtn.className = "flex-1 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition border-transparent";
-        fileView.classList.remove('hidden');
-        phraseView.classList.add('hidden');
-      }
-    }
-
-    function handleBackupFileChosen(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      document.getElementById('backupFileNameDisplay').innerText = file.name;
-
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          pendingBackupFileContent = JSON.parse(evt.target.result);
-          showToast('Backup file loaded', 'info');
-        } catch (err) {
-          showToast('Invalid backup file format', 'error');
-          pendingBackupFileContent = null;
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    async function processAccountRestoration() {
-      if (restoreMode === 'phrase') {
-        const inputPhrase = document.getElementById('restorePhraseInput').value.trim();
-        const inputPin = document.getElementById('restorePinInput').value.trim();
-
-        const words = inputPhrase.split(/\s+/);
-        if (words.length < 12) {
-          showToast('Please enter a valid 12-word recovery phrase', 'error');
-          return;
-        }
-
-        const derivedId = await deriveFlashIdFromPhrase(inputPhrase);
-        
-        myRecoveryPhrase = inputPhrase;
-        myFlashId = derivedId;
-        mySecurityPin = inputPin;
-
-        localStorage.setItem('flashshare_my_phrase', myRecoveryPhrase);
-        localStorage.setItem('flashshare_my_id', myFlashId);
-        if (inputPin) localStorage.setItem('flashshare_security_pin', inputPin);
-
-        showToast(`Account Restored: ${myFlashId}`, 'success');
-
-      } else {
-        if (!pendingBackupFileContent) {
-          showToast('Please select a valid .flash backup file', 'error');
-          return;
-        }
-
-        const fileData = pendingBackupFileContent;
-        const requiredPin = fileData.pin;
-        const inputPin = document.getElementById('restoreFilePinInput').value.trim();
-
-        if (requiredPin && requiredPin !== inputPin) {
-          showToast('Incorrect Security PIN for backup file', 'error');
-          return;
-        }
-
-        myFlashId = fileData.flashId || (await deriveFlashIdFromPhrase(fileData.recoveryPhrase));
-        myDisplayName = fileData.displayName || ('User ' + myFlashId.slice(-4));
-        myRecoveryPhrase = fileData.recoveryPhrase || generateMnemonicPhrase();
-        mySecurityPin = fileData.pin || '';
-
-        localStorage.setItem('flashshare_my_id', myFlashId);
-        localStorage.setItem('flashshare_my_name', myDisplayName);
-        localStorage.setItem('flashshare_my_phrase', myRecoveryPhrase);
-        if (mySecurityPin) localStorage.setItem('flashshare_security_pin', mySecurityPin);
-
-        if (fileData.contacts) {
-          contacts = fileData.contacts;
-          persistData();
-        }
-
-        showToast('Account & contacts restored from backup file!', 'success');
-      }
-
-      closeRestoreAccountModal();
-      
-      initUserSession();
-      loadStoredData();
-      initPeerJS();
-      renderContactsList();
-      
-      if (activePeerId) {
-        selectActiveChat(activePeerId);
-      }
-    }
-
-    // 8. Modals Logic (QR Code, Camera Scanner, Profile, Nicknames)
-    function openModal(id) {
-      const modal = document.getElementById(id);
-      if (modal) modal.classList.add('active');
-    }
-
-    function closeModal(id) {
-      const modal = document.getElementById(id);
-      if (modal) modal.classList.remove('active');
-    }
-
-    function openMyQRModal() {
-      const qrContainer = document.getElementById('qrcodeCanvas');
-      qrContainer.innerHTML = '';
-
-      const shareableURL = `${window.location.origin}${window.location.pathname}?code=${myFlashId}`;
-
-      if (typeof QRCode !== 'undefined') {
-        new QRCode(qrContainer, {
-          text: shareableURL,
-          width: 170,
-          height: 170,
-          colorDark: "#07090e",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
-      }
-
-      openModal('myQRModal');
-    }
-
-    function closeMyQRModal() {
-      closeModal('myQRModal');
-    }
-
-    function copyMyFlashID() {
-      navigator.clipboard.writeText(myFlashId).then(() => {
-        showToast('FLASH ID copied to clipboard!', 'success');
-      });
-    }
-
-    // Camera Scanner
-    async function openCameraScannerModal() {
-      openModal('cameraScannerModal');
-      const video = document.getElementById('qrVideo');
-      const statusEl = document.getElementById('scannerStatus');
-
-      try {
-        qrVideoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        video.srcObject = qrVideoStream;
-        video.setAttribute('playsinline', true);
-        video.play();
-
-        scanQRCodeFrame();
-      } catch (err) {
-        statusEl.innerText = 'Could not access camera for scanning';
-        showToast('Camera permission required', 'error');
-      }
-    }
-
-    function scanQRCodeFrame() {
-      const video = document.getElementById('qrVideo');
-      const canvas = document.getElementById('qrCanvas');
-      const ctx = canvas.getContext('2d');
-
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.height = video.videoHeight;
-        canvas.width = video.videoWidth;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        if (typeof jsQR !== 'undefined') {
-          const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-          if (code) {
-            let scannedId = code.data;
-            if (scannedId.includes('code=')) {
-              scannedId = scannedId.split('code=')[1];
+                this.init();
             }
 
-            if (scannedId) {
-              closeCameraScannerModal();
-              startNewChat(scannedId.toUpperCase());
-              showToast(`QR Code Scanned: ${scannedId}`, 'success');
-              return;
+            // --- INITIALIZATION ---
+            async init() {
+                this.setupAmbientCanvas();
+                this.loadLocalStorage();
+                
+                if (!this.account) {
+                    await this.createNewAccount();
+                }
+                this.ensureRecoveryCode();
+                await this.initializeCloudSync();
+
+                this.updateProfileUI();
+                this.renderContactsList();
+                this.initPeerJS();
+                this.setupPasteListener();
             }
-          }
+
+            // --- LOCAL STORAGE MANAGER ---
+            loadLocalStorage() {
+                try {
+                    const acc = localStorage.getItem('flashshare_account_v3');
+                    const con = localStorage.getItem('flashshare_contacts_v3');
+                    const msg = localStorage.getItem('flashshare_messages_v3');
+
+                    if (acc) this.account = JSON.parse(acc);
+                    if (con) this.contacts = JSON.parse(con);
+                    if (msg) this.messages = JSON.parse(msg);
+                } catch (e) {
+                    console.error('Storage parse error:', e);
+                }
+            }
+
+            saveLocalStorage() {
+                try {
+                    localStorage.setItem('flashshare_account_v3', JSON.stringify(this.account));
+                    localStorage.setItem('flashshare_contacts_v3', JSON.stringify(this.contacts));
+                    localStorage.setItem('flashshare_messages_v3', JSON.stringify(this.messages));
+                } catch (err) {
+                    console.error('FlashShare could not save locally. Browser storage may be full or disabled.', err);
+                    const status = document.getElementById('recoveryCodeStatus');
+                    if (status) status.textContent = 'Warning: browser storage could not save changes. Export a backup and remove large files.';
+                }
+                if (this.cloudReady) this.scheduleCloudSync();
+            }
+
+            async sha256Bytes(value) {
+                const bytes = new TextEncoder().encode(value);
+                return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+            }
+
+            toBase64(bytes) {
+                let binary = '';
+                for (const b of bytes) binary += String.fromCharCode(b);
+                return btoa(binary);
+            }
+
+            fromBase64(value) {
+                const binary = atob(value);
+                return Uint8Array.from(binary, ch => ch.charCodeAt(0));
+            }
+
+            async cloudCredentials() {
+                if (!this.account?.recoveryCode || !crypto?.subtle) throw new Error('Secure browser cryptography is unavailable. Use HTTPS.');
+                const normalized = String(this.account.recoveryCode).trim().toUpperCase();
+                let tokenBytes;
+                const modern = normalized.match(/^FS2\.([A-F0-9]{64})$/);
+                if (modern) {
+                    // The token is SHA-256(secret bytes), which is also the digest used to derive the FS2 Flash ID.
+                    // The Worker can verify the ID/token relationship without receiving the recovery secret.
+                    const secretBytes = new Uint8Array(modern[1].match(/.{2}/g).map(pair => parseInt(pair, 16)));
+                    tokenBytes = new Uint8Array(await crypto.subtle.digest('SHA-256', secretBytes));
+                } else {
+                    // Compatibility for older FS1 IDs, which were not derived from their recovery code.
+                    tokenBytes = await this.sha256Bytes('FLASHSHARE-CLOUD-AUTH|' + normalized);
+                }
+                const token = Array.from(tokenBytes, b => b.toString(16).padStart(2, '0')).join('');
+                const keyBytes = await this.sha256Bytes('FLASHSHARE-CLOUD-ENCRYPTION|' + normalized);
+                const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+                return { token, key };
+            }
+
+            async encryptCloudSnapshot() {
+                const { token, key } = await this.cloudCredentials();
+                const snapshot = JSON.stringify({ version: 1, contacts: this.contacts, messages: this.messages, displayName: this.account.displayName || '' });
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(snapshot));
+                return { token, iv: this.toBase64(iv), ciphertext: this.toBase64(new Uint8Array(ciphertext)) };
+            }
+
+            async decryptCloudSnapshot(payload) {
+                const { key } = await this.cloudCredentials();
+                const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: this.fromBase64(payload.iv) }, key, this.fromBase64(payload.ciphertext));
+                const data = JSON.parse(new TextDecoder().decode(plain));
+                if (!data || typeof data.contacts !== 'object' || typeof data.messages !== 'object') throw new Error('Cloud backup format is invalid.');
+                return data;
+            }
+
+            cloudStatus(message) {
+                const status = document.getElementById('recoveryCodeStatus');
+                if (status) status.textContent = message;
+            }
+
+            async cloudRequest(path, options = {}) {
+                const base = FLASHSHARE_CLOUD_API.replace(/\/$/, '');
+                const { token } = await this.cloudCredentials();
+                const response = await fetch(base + path, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Flash-ID': this.account.flashId, ...(options.headers || {}) }
+                });
+                if (response.status === 404) return { notFound: true };
+                if (!response.ok) throw new Error('Cloud sync request failed (' + response.status + ').');
+                return response.json();
+            }
+
+            async initializeCloudSync() {
+                if (!FLASHSHARE_CLOUD_API || !/^https:\/\//i.test(FLASHSHARE_CLOUD_API)) {
+                    this.cloudReady = false;
+                    return;
+                }
+                try {
+                    const remote = await this.cloudRequest('/v1/snapshot');
+                    if (remote && !remote.notFound && remote.iv && remote.ciphertext) {
+                        const cloud = await this.decryptCloudSnapshot(remote);
+                        // Merge by stable message IDs so a local-only message is not silently discarded.
+                        const mergedContacts = { ...cloud.contacts, ...this.contacts };
+                        const mergedMessages = { ...cloud.messages };
+                        for (const [contactId, localMsgs] of Object.entries(this.messages || {})) {
+                            const byId = new Map((mergedMessages[contactId] || []).map(m => [m.id, m]));
+                            for (const msg of (localMsgs || [])) byId.set(msg.id, msg);
+                            mergedMessages[contactId] = Array.from(byId.values()).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                        }
+                        this.contacts = mergedContacts;
+                        this.messages = mergedMessages;
+                        if (cloud.displayName && (!this.account.displayName || this.account.displayName.startsWith('Flash User '))) this.account.displayName = cloud.displayName;
+                        this.saveLocalStorage();
+                        this.cloudStatus('Cloud backup loaded and decrypted on this device.');
+                    } else {
+                        this.cloudStatus('No cloud backup exists yet. Uploading this device’s current chats…');
+                    }
+                    this.cloudReady = true;
+                    await this.syncCloudSnapshot();
+                } catch (err) {
+                    this.cloudReady = false;
+                    console.error('FLASHSHARE cloud sync unavailable:', err);
+                    this.cloudStatus('Cloud sync unavailable: ' + err.message + ' Local storage is still active.');
+                }
+            }
+
+            scheduleCloudSync() {
+                if (!FLASHSHARE_CLOUD_API || !this.cloudReady) return;
+                clearTimeout(this.cloudSyncTimer);
+                this.cloudSyncTimer = setTimeout(() => this.syncCloudSnapshot(), 900);
+            }
+
+            async syncCloudSnapshot() {
+                if (!FLASHSHARE_CLOUD_API || !this.cloudReady || !this.account) return;
+                if (this.cloudSyncRunning) { this.cloudSyncQueued = true; return; }
+                this.cloudSyncRunning = true;
+                try {
+                    const encrypted = await this.encryptCloudSnapshot();
+                    const { token, ...payload } = encrypted;
+                    const base = FLASHSHARE_CLOUD_API.replace(/\/$/, '');
+                    const response = await fetch(base + '/v1/snapshot', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'X-Flash-ID': this.account.flashId },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error('Cloud save failed (' + response.status + ').');
+                    this.cloudStatus('Cloud backup synced. Messages are encrypted before upload.');
+                } catch (err) {
+                    console.error('FLASHSHARE cloud save failed:', err);
+                    this.cloudStatus('Cloud save failed: ' + err.message + ' Your local copy remains saved.');
+                } finally {
+                    this.cloudSyncRunning = false;
+                    if (this.cloudSyncQueued) { this.cloudSyncQueued = false; this.scheduleCloudSync(); }
+                }
+            }
+
+            // --- ACCOUNT & SEED CREATION ---
+            randomHex(byteLength) {
+                const bytes = new Uint8Array(byteLength);
+                if (!window.crypto || typeof window.crypto.getRandomValues !== 'function') {
+                    throw new Error('Secure random generation is unavailable in this browser.');
+                }
+                window.crypto.getRandomValues(bytes);
+                return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+            }
+
+            makeLegacyRecoveryCode(flashId) {
+                return `FS1.${flashId}.${this.randomHex(32)}`;
+            }
+
+            async deriveFlashId(secretHex) {
+                if (!window.crypto || !window.crypto.subtle) {
+                    throw new Error('Secure account recovery requires HTTPS or a modern secure browser context.');
+                }
+                const bytes = new Uint8Array(secretHex.match(/.{2}/g).map(pair => parseInt(pair, 16)));
+                const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+                const hex = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+                return 'FLASH-' + hex.slice(0, 24);
+            }
+
+            async createNewAccount(customId = null, customRecoveryCode = null) {
+                let flashId, recoveryCode;
+                if (customId && customRecoveryCode) {
+                    flashId = customId;
+                    recoveryCode = customRecoveryCode;
+                } else {
+                    const secret = this.randomHex(32);
+                    recoveryCode = `FS2.${secret}`;
+                    flashId = await this.deriveFlashId(secret);
+                }
+                this.account = {
+                    flashId,
+                    displayName: 'Flash User ' + flashId.slice(-4),
+                    recoveryCode,
+                    created: Date.now()
+                };
+                this.saveLocalStorage();
+            }
+
+            ensureRecoveryCode() {
+                if (!this.account) return;
+                const code = String(this.account.recoveryCode || '');
+                const isLegacyCode = /^FS1\.FLASH-[A-Z0-9-]{5,40}\.[A-F0-9]{64}$/i.test(code);
+                const isNewCode = /^FS2\.[A-F0-9]{64}$/i.test(code);
+                if (!isLegacyCode && !isNewCode) {
+                    // Keep the existing ID for accounts created by older versions.
+                    this.account.recoveryCode = this.makeLegacyRecoveryCode(this.account.flashId);
+                    this.saveLocalStorage();
+                }
+            }
+
+            updateProfileUI() {
+                if (!this.account) return;
+                document.getElementById('userDisplayName').textContent = this.account.displayName || 'Flash User';
+                document.getElementById('userFlashId').textContent = this.account.flashId;
+                document.getElementById('userAvatar').textContent = (this.account.displayName || 'F').charAt(0).toUpperCase();
+
+                this.ensureRecoveryCode();
+                const recoveryBox = document.getElementById('recoveryCodeBox');
+                if (recoveryBox) recoveryBox.textContent = this.account.recoveryCode;
+
+                const qrContainer = document.getElementById('qrcodeCanvas');
+                qrContainer.innerHTML = '';
+                new QRCode(qrContainer, {
+                    text: this.account.flashId,
+                    width: 170,
+                    height: 170,
+                    colorDark: '#090d16',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                document.getElementById('modalFlashId').textContent = this.account.flashId;
+            }
+
+            // --- PEERJS REALTIME P2P ENGINE ---
+            initPeerJS() {
+                const netDot = document.getElementById('netStatusDot');
+                const netText = document.getElementById('netStatusText');
+
+                try {
+                    this.peer = new Peer(this.account.flashId, {
+                        debug: 1,
+                        config: {'iceServers': [{ urls: 'stun:stun.l.google.com:19302' }]}
+                    });
+
+                    this.peer.on('open', (id) => {
+                        netDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-glow";
+                        netText.innerText = "Node Online";
+                    });
+
+                    this.peer.on('connection', (conn) => {
+                        this.setupConnectionListeners(conn);
+                    });
+
+                    this.peer.on('error', (err) => {
+                        console.warn('PeerJS Connection Warning:', err.type);
+                        netDot.className = "w-2.5 h-2.5 rounded-full bg-amber-500";
+                        netText.innerText = "Fallback Mode";
+                    });
+                } catch (e) {
+                    console.error('Peer initialization error:', e);
+                }
+            }
+
+            reconnectPeer() {
+                if (this.peer) {
+                    try { this.peer.destroy(); } catch (e) {}
+                }
+                this.peerConnections = {};
+                document.getElementById('netStatusText').textContent = 'Reconnecting...';
+                document.getElementById('netStatusDot').className = 'w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse';
+                this.initPeerJS();
+            }
+
+            connectToPeer(targetFlashId) {
+                if (!this.peer || this.peerConnections[targetFlashId]) return;
+                const conn = this.peer.connect(targetFlashId);
+                this.setupConnectionListeners(conn);
+            }
+
+            setupConnectionListeners(conn) {
+                conn.on('open', () => {
+                    this.peerConnections[conn.peer] = conn;
+                    this.ensureContactExists(conn.peer);
+                    this.renderContactsList();
+                    if (this.activeContactId === conn.peer) this.updateChatHeaderStatus(true);
+                });
+
+                conn.on('data', (data) => {
+                    this.handleIncomingPeerData(conn.peer, data);
+                });
+
+                conn.on('close', () => {
+                    delete this.peerConnections[conn.peer];
+                    if (this.activeContactId === conn.peer) this.updateChatHeaderStatus(false);
+                    this.renderContactsList();
+                });
+            }
+
+            // --- CONTACTS MANAGEMENT ---
+            ensureContactExists(flashId, nickname = '') {
+                if (!this.contacts[flashId]) {
+                    this.contacts[flashId] = {
+                        flashId: flashId,
+                        nickname: nickname,
+                        addedAt: Date.now()
+                    };
+                    this.saveLocalStorage();
+                }
+            }
+
+            addContactFromInput() {
+                const input = document.getElementById('addContactInput');
+                const val = input.value.trim().toUpperCase();
+                if (!val || val === this.account.flashId) return;
+
+                this.ensureContactExists(val);
+                this.connectToPeer(val);
+                this.selectContact(val);
+                input.value = '';
+                confetti({ particleCount: 30, spread: 60, origin: { y: 0.8 } });
+            }
+
+            renderContactsList() {
+                const list = document.getElementById('contactsList');
+                list.innerHTML = '';
+
+                const contactKeys = Object.keys(this.contacts);
+                if (contactKeys.length === 0) {
+                    list.innerHTML = `<div class="p-4 text-center text-xs text-slate-500">No active contacts yet. Add a Flash ID above.</div>`;
+                    return;
+                }
+
+                let unreadTotal = 0;
+
+                contactKeys.forEach(id => {
+                    const c = this.contacts[id];
+                    const msgs = this.messages[id] || [];
+                    const lastMsg = msgs[msgs.length - 1];
+                    const isOnline = !!this.peerConnections[id];
+                    const isSelected = this.activeContactId === id;
+
+                    const unreadCount = msgs.filter(m => m.incoming && !m.read).length;
+                    unreadTotal += unreadCount;
+
+                    const displayName = c.nickname || c.flashId;
+                    const safeDisplayName = this.escapeHtml(String(displayName));
+                    const safeId = this.escapeHtml(String(id));
+                    const safePreview = lastMsg
+                        ? this.escapeHtml(String(lastMsg.type === 'text' ? lastMsg.content : (lastMsg.type === 'file' ? (lastMsg.fileName || 'File') : '[Media File]')))
+                        : safeId;
+
+                    const item = document.createElement('div');
+                    item.className = `p-3 rounded-xl cursor-pointer transition flex items-center justify-between ${isSelected ? 'bg-flash-600/20 border border-flash-500/30' : 'hover:bg-white/5'}`;
+                    item.onclick = () => this.selectContact(id);
+
+                    item.innerHTML = `
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <div class="relative flex-shrink-0">
+                                <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-white border border-white/10">
+                                    ${displayName.charAt(0).toUpperCase()}
+                                </div>
+                                <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-900 ${isOnline ? 'bg-emerald-500' : 'bg-slate-600'}"></span>
+                            </div>
+                            <div class="overflow-hidden">
+                                <h4 class="text-xs font-semibold text-white truncate">${safeDisplayName}</h4>
+                                <p class="text-[11px] text-slate-400 truncate">${safePreview}</p>
+                            </div>
+                        </div>
+                        ${unreadCount > 0 ? `<span class="bg-flash-500 text-slate-950 font-bold text-[10px] px-2 py-0.5 rounded-full">${unreadCount}</span>` : ''}
+                    `;
+                    list.appendChild(item);
+                });
+
+                const badge = document.getElementById('unreadTotalBadge');
+                const mobBadge = document.getElementById('mobileUnreadBadge');
+                if (unreadTotal > 0) {
+                    badge.innerText = `${unreadTotal} unread`;
+                    badge.classList.remove('hidden');
+                    mobBadge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                    mobBadge.classList.add('hidden');
+                }
+            }
+
+            selectContact(flashId) {
+                this.activeContactId = flashId;
+                
+                // Mark incoming messages as read
+                if (this.messages[flashId]) {
+                    this.messages[flashId].forEach(m => m.read = true);
+                    this.saveLocalStorage();
+                }
+
+                // Close sidebar on mobile after selecting chat
+                this.closeSidebar();
+                
+                const c = this.contacts[flashId];
+                const isOnline = !!this.peerConnections[flashId];
+                const displayName = c.nickname || c.flashId;
+
+                document.getElementById('emptyChatSplash').classList.add('hidden');
+                document.getElementById('activeChatTitle').innerText = displayName;
+                document.getElementById('editNicknameBtn').classList.remove('hidden');
+                document.getElementById('activeChatSubtext').innerText = `${c.flashId} • ${isOnline ? 'P2P Direct Connected' : 'Offline (Echo fallback)'}`;
+                document.getElementById('activeChatAvatar').innerText = displayName.charAt(0).toUpperCase();
+                document.getElementById('activeChatActions').classList.remove('hidden');
+                
+                const inputArea = document.getElementById('chatInputArea');
+                inputArea.classList.remove('opacity-50', 'pointer-events-none');
+
+                this.renderMessages();
+                this.renderContactsList();
+            }
+
+            updateChatHeaderStatus(isOnline) {
+                if (!this.activeContactId) return;
+                const c = this.contacts[this.activeContactId];
+                document.getElementById('activeChatSubtext').innerText = `${c.flashId} • ${isOnline ? 'P2P Direct Connected' : 'Offline (Echo fallback)'}`;
+            }
+
+            // --- MESSAGING & DATA HANDLING ---
+            handleSendMessage(e) {
+                e.preventDefault();
+                const input = document.getElementById('messageInput');
+                const text = input.value.trim();
+                if (!text || !this.activeContactId) return;
+
+                const msgObj = {
+                    id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
+                    type: 'text',
+                    content: text,
+                    timestamp: Date.now(),
+                    incoming: false
+                };
+
+                this.dispatchMessage(msgObj);
+                input.value = '';
+            }
+
+            dispatchMessage(msgObj) {
+                if (!this.activeContactId) return;
+
+                if (!this.messages[this.activeContactId]) {
+                    this.messages[this.activeContactId] = [];
+                }
+                this.messages[this.activeContactId].push(msgObj);
+                this.saveLocalStorage();
+
+                // Never fake a reply. Keep unsent messages marked pending until a real peer is connected.
+                const targetId = this.activeContactId;
+                const conn = this.peerConnections[targetId];
+                if (conn && conn.open) {
+                    try {
+                        conn.send(msgObj);
+                        msgObj.delivery = 'sent';
+                    } catch (err) {
+                        msgObj.delivery = 'failed';
+                    }
+                } else {
+                    msgObj.delivery = 'pending';
+                }
+                const saved = this.messages[targetId];
+                const savedIndex = saved ? saved.findIndex(m => m.id === msgObj.id) : -1;
+                if (savedIndex >= 0) saved[savedIndex].delivery = msgObj.delivery;
+                this.saveLocalStorage();
+
+                this.renderMessages();
+                this.renderContactsList();
+            }
+
+            handleIncomingPeerData(senderFlashId, data) {
+                this.ensureContactExists(senderFlashId);
+                if (!this.messages[senderFlashId]) this.messages[senderFlashId] = [];
+
+                const incomingMsg = {
+                    ...data,
+                    incoming: true,
+                    read: this.activeContactId === senderFlashId
+                };
+
+                this.messages[senderFlashId].push(incomingMsg);
+                this.saveLocalStorage();
+
+                if (this.activeContactId === senderFlashId) {
+                    this.renderMessages();
+                }
+                this.renderContactsList();
+            }
+
+            renderMessages() {
+                const container = document.getElementById('messagesContainer');
+                container.innerHTML = '';
+
+                const msgs = this.messages[this.activeContactId] || [];
+                
+                msgs.forEach(m => {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `flex flex-col ${m.incoming ? 'items-start' : 'items-end'} group relative`;
+
+                    const timeStr = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    let bodyHtml = '';
+                    if (m.type === 'text') {
+                        bodyHtml = `<p class="text-xs leading-relaxed break-words">${this.escapeHtml(m.content)}</p>`;
+                    } else if (m.type === 'image') {
+                        const safeImage = typeof m.content === 'string' && /^data:image\/(png|jpeg|gif|webp|bmp);base64,[A-Za-z0-9+/=]+$/i.test(m.content) ? m.content : '';
+                        bodyHtml = safeImage ? `
+                            <img src="${safeImage}" onclick="app.openLightbox('${safeImage}')" alt="Shared image" class="max-w-[220px] sm:max-w-xs rounded-lg cursor-pointer hover:opacity-90 transition border border-white/10 mb-1">
+                            ${m.caption ? `<p class="text-xs text-slate-300 mt-1">${this.escapeHtml(String(m.caption))}</p>` : ''}
+                        ` : '<p class="text-xs text-rose-300">Unsupported or invalid image.</p>';
+                    } else if (m.type === 'audio') {
+                        const safeAudio = typeof m.content === 'string' && /^data:audio\/(webm|ogg|mpeg|wav);base64,[A-Za-z0-9+/=]+$/i.test(m.content) ? m.content : '';
+                        bodyHtml = safeAudio ? `
+                            <div class="flex items-center space-x-2 py-1">
+                                <audio controls src="${safeAudio}" class="h-8 max-w-[200px]"></audio>
+                            </div>
+                        ` : '<p class="text-xs text-rose-300">Unsupported or invalid audio.</p>';
+                    } else if (m.type === 'file') {
+                        const safeFileData = typeof m.content === 'string' && /^data:[A-Za-z0-9.+-]+\/[A-Za-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$/.test(m.content) ? m.content : '';
+                        const safeFileName = this.escapeHtml(String(m.fileName || 'download'));
+                        bodyHtml = safeFileData
+                            ? `<a href="${safeFileData}" download="${safeFileName}" class="text-xs underline break-all"><i class="fa-solid fa-download mr-1"></i>${safeFileName}</a>`
+                            : '<p class="text-xs text-rose-300">Unsupported or invalid file.</p>';
+                    }
+
+                    msgDiv.innerHTML = `
+                        <div class="relative max-w-[85%] sm:max-w-[70%] p-3 rounded-2xl shadow-md ${m.incoming ? 'bg-slate-800 text-slate-100 rounded-tl-xs border border-white/5' : 'bg-gradient-to-r from-flash-600 to-flash-500 text-white rounded-tr-xs'}">
+                            ${bodyHtml}
+                            <div class="flex items-center justify-end space-x-1 mt-1 text-[10px] opacity-70">
+                                <span>${timeStr}</span>
+                                ${!m.incoming ? (m.delivery === 'sent' ? '<i class="fa-solid fa-check-double text-[9px]" title="Sent to peer"></i>' : `<span class="text-[9px]">${m.delivery === 'failed' ? 'Failed' : 'Pending'}</span>`) : ''}
+                            </div>
+                            
+                            <!-- Context Delete Option -->
+                            <button onclick="app.deleteMessageLocal('${m.id}')" class="absolute -top-2 ${m.incoming ? '-right-2' : '-left-2'} opacity-0 group-hover:opacity-100 transition bg-slate-900 border border-white/10 text-rose-400 hover:text-rose-300 w-6 h-6 rounded-full flex items-center justify-center text-[10px] shadow" title="Delete for me">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+
+                    container.appendChild(msgDiv);
+                });
+
+                container.scrollTop = container.scrollHeight;
+            }
+
+            deleteMessageLocal(msgId) {
+                if (!this.activeContactId || !this.messages[this.activeContactId]) return;
+                this.messages[this.activeContactId] = this.messages[this.activeContactId].filter(m => m.id !== msgId);
+                this.saveLocalStorage();
+                this.renderMessages();
+            }
+
+            clearCurrentChatHistory() {
+                if (!this.activeContactId) return;
+                this.messages[this.activeContactId] = [];
+                this.saveLocalStorage();
+                this.renderMessages();
+            }
+
+            removeCurrentContact() {
+                if (!this.activeContactId) return;
+                delete this.contacts[this.activeContactId];
+                delete this.messages[this.activeContactId];
+                this.activeContactId = null;
+                this.saveLocalStorage();
+
+                document.getElementById('emptyChatSplash').classList.remove('hidden');
+                document.getElementById('chatInputArea').classList.add('opacity-50', 'pointer-events-none');
+                document.getElementById('activeChatTitle').innerText = "Select a Conversation";
+                document.getElementById('activeChatSubtext').innerText = "No active connection";
+                document.getElementById('activeChatActions').classList.add('hidden');
+                this.renderContactsList();
+            }
+
+            // --- FILE & CLIPBOARD PASTING ---
+            handleFileSelect(e) {
+                const files = e.target.files;
+                if (!files || files.length === 0) return;
+
+                Array.from(files).forEach(file => {
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert(`${file.name} is larger than the 2 MB per-file limit.`);
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const isImg = file.type.startsWith('image/');
+                        const msgObj = {
+                            id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
+                            type: isImg ? 'image' : 'file',
+                            content: event.target.result,
+                            fileName: file.name,
+                            timestamp: Date.now(),
+                            incoming: false
+                        };
+                        this.dispatchMessage(msgObj);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                e.target.value = '';
+            }
+
+            triggerGallerySelect() {
+                const input = document.getElementById('fileInput');
+                input.accept = "image/*";
+                input.click();
+            }
+
+            setupPasteListener() {
+                document.addEventListener('paste', (e) => {
+                    if (!this.activeContactId) return;
+                    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                    for (let item of items) {
+                        if (item.type.indexOf('image') !== -1) {
+                            const blob = item.getAsFile();
+                            const reader = new FileReader();
+                            reader.onload = (evt) => {
+                                this.dispatchMessage({
+                                    id: 'msg-' + Date.now(),
+                                    type: 'image',
+                                    content: evt.target.result,
+                                    timestamp: Date.now(),
+                                    incoming: false
+                                });
+                            };
+                            reader.readAsDataURL(blob);
+                        }
+                    }
+                });
+            }
+
+            // --- VOICE NOTES RECORDING ---
+            async toggleVoiceRecord() {
+                if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                    this.stopAndSendVoiceRecord();
+                    return;
+                }
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.mediaRecorder = new MediaRecorder(stream);
+                    this.mediaRecorder.stream = stream;
+                    this.audioChunks = [];
+
+                    this.mediaRecorder.ondataavailable = (e) => this.audioChunks.push(e.data);
+                    this.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                            this.dispatchMessage({
+                                id: 'msg-' + Date.now(),
+                                type: 'audio',
+                                content: reader.result,
+                                timestamp: Date.now(),
+                                incoming: false
+                            });
+                        };
+                        reader.readAsDataURL(audioBlob);
+                        stream.getTracks().forEach(track => track.stop());
+                    };
+
+                    this.mediaRecorder.start();
+                    this.startRecordingTimer();
+                    document.getElementById('voiceRecordingUI').classList.remove('hidden');
+                } catch (err) {
+                    alert('Microphone access denied or unavailable.');
+                }
+            }
+
+            startRecordingTimer() {
+                this.recordingSeconds = 0;
+                const timerEl = document.getElementById('recordingTimer');
+                this.recordingInterval = setInterval(() => {
+                    this.recordingSeconds++;
+                    const m = String(Math.floor(this.recordingSeconds / 60)).padStart(2, '0');
+                    const s = String(this.recordingSeconds % 60).padStart(2, '0');
+                    timerEl.innerText = `${m}:${s}`;
+                }, 1000);
+            }
+
+            stopAndSendVoiceRecord() {
+                if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                    this.mediaRecorder.stop();
+                }
+                clearInterval(this.recordingInterval);
+                document.getElementById('voiceRecordingUI').classList.add('hidden');
+            }
+
+            cancelVoiceRecord() {
+                if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+                    this.mediaRecorder.onstop = null;
+                    this.mediaRecorder.stop();
+                }
+                if (this.mediaRecorder && this.mediaRecorder.stream) {
+                    this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+                clearInterval(this.recordingInterval);
+                document.getElementById('voiceRecordingUI').classList.add('hidden');
+            }
+
+            // --- LIVE CAMERA QR SCANNER ---
+            async openCameraScanner() {
+                this.openModal('cameraScannerModal');
+                const video = document.getElementById('qrVideo');
+
+                try {
+                    this.qrScannerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = this.qrScannerStream;
+                    video.setAttribute('playsinline', true);
+                    video.play();
+                    this.scanQrFrame();
+                } catch (e) {
+                    alert('Camera permission required to scan QR code.');
+                    this.closeCameraScanner();
+                }
+            }
+
+            scanQrFrame() {
+                const video = document.getElementById('qrVideo');
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const code = jsQR(imgData.data, imgData.width, imgData.height);
+
+                    if (code && code.data.startsWith('FLASH-')) {
+                        this.closeCameraScanner();
+                        this.ensureContactExists(code.data);
+                        this.connectToPeer(code.data);
+                        this.selectContact(code.data);
+                        confetti({ particleCount: 50, spread: 70 });
+                        return;
+                    }
+                }
+                this.qrScannerAnim = requestAnimationFrame(() => this.scanQrFrame());
+            }
+
+            closeCameraScanner() {
+                if (this.qrScannerStream) {
+                    this.qrScannerStream.getTracks().forEach(t => t.stop());
+                }
+                if (this.qrScannerAnim) cancelAnimationFrame(this.qrScannerAnim);
+                this.closeModal('cameraScannerModal');
+            }
+
+            // --- BACKUP & RESTORATION EXPORT/IMPORT ---
+            exportFullBackupJson() {
+                const backupObj = {
+                    version: 'v3',
+                    account: this.account,
+                    contacts: this.contacts,
+                    messages: this.messages,
+                    exportedAt: Date.now()
+                };
+
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupObj, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `FLASHSHARE_BACKUP_${this.account.flashId}.flash`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+            }
+
+            importBackupJson(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const parsed = JSON.parse(evt.target.result);
+                        if (parsed.account && parsed.account.flashId) {
+                            this.account = parsed.account;
+                            this.contacts = parsed.contacts || {};
+                            this.messages = parsed.messages || {};
+                            this.ensureRecoveryCode();
+                            if (this.peer) { try { this.peer.destroy(); } catch (e) {} }
+                            this.peerConnections = {};
+                            this.activeContactId = null;
+                            this.saveLocalStorage();
+                            this.updateProfileUI();
+                            this.renderContactsList();
+                            this.closeModal('accountSettingsModal');
+                            this.initPeerJS();
+                            alert('Backup successfully imported!');
+                        }
+                    } catch (err) {
+                        alert('Invalid .flash backup file.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            generateRecoveryCode() {
+                if (!this.account) return;
+                this.ensureRecoveryCode();
+                const box = document.getElementById('recoveryCodeBox');
+                if (box) box.textContent = this.account.recoveryCode;
+                const status = document.getElementById('recoveryCodeStatus');
+                if (status) status.textContent = 'Recovery code is ready. Save a copy somewhere safe.';
+            }
+
+            async copyRecoveryCode() {
+                if (!this.account) return;
+                this.ensureRecoveryCode();
+                try {
+                    await navigator.clipboard.writeText(this.account.recoveryCode);
+                    const status = document.getElementById('recoveryCodeStatus');
+                    if (status) status.textContent = 'Recovery code copied to clipboard.';
+                } catch (err) {
+                    const status = document.getElementById('recoveryCodeStatus');
+                    if (status) status.textContent = 'Clipboard access failed. Select and copy the code above manually.';
+                }
+            }
+
+            downloadRecoveryCode() {
+                if (!this.account) return;
+                this.ensureRecoveryCode();
+                const blob = new Blob([
+                    'FLASHSHARE ACCOUNT RECOVERY CODE\n',
+                    'Keep this code private. Anyone with it can recover this Flash ID.\n\n',
+                    this.account.recoveryCode,
+                    '\n'
+                ], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `FLASHSHARE_RECOVERY_${this.account.flashId}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                const status = document.getElementById('recoveryCodeStatus');
+                if (status) status.textContent = 'Recovery code downloaded. Store the file somewhere private.';
+            }
+
+            async restoreAccountFromRecoveryCode() {
+                const input = document.getElementById('restoreCodeInput');
+                const code = input.value.trim().replace(/\s+/g, '').toUpperCase();
+                let recoveredId;
+                const newMatch = code.match(/^FS2\.([A-F0-9]{64})$/);
+                const legacyMatch = code.match(/^FS1\.(FLASH-[A-Z0-9-]{5,40})\.([A-F0-9]{64})$/);
+                if (newMatch) {
+                    try {
+                        recoveredId = await this.deriveFlashId(newMatch[1]);
+                    } catch (err) {
+                        alert('Secure recovery is unavailable in this browser. Open FlashShare over HTTPS and try again.');
+                        return;
+                    }
+                } else if (legacyMatch) {
+                    recoveredId = legacyMatch[1];
+                } else {
+                    alert('That recovery code is not valid. Paste the complete FS2 code, or an FS1 code from an older account.');
+                    return;
+                }
+
+                if (!confirm(`Restore Flash ID ${recoveredId} on this browser? This switches the active account. Export a backup first if you need your current local chats.`)) return;
+
+                if (this.peer) {
+                    try { this.peer.destroy(); } catch (e) {}
+                }
+                this.peerConnections = {};
+                this.activeContactId = null;
+                const sameAccount = this.account?.flashId === recoveredId;
+                if (!sameAccount) { this.contacts = {}; this.messages = {}; }
+                this.cloudReady = false;
+                this.account = {
+                    flashId: recoveredId,
+                    displayName: 'Flash User ' + recoveredId.slice(-4),
+                    recoveryCode: code,
+                    created: Date.now()
+                };
+                this.saveLocalStorage();
+                await this.initializeCloudSync();
+                document.getElementById('emptyChatSplash').classList.remove('hidden');
+                document.getElementById('chatInputArea').classList.add('opacity-50', 'pointer-events-none');
+                document.getElementById('activeChatTitle').textContent = 'Select a Conversation';
+                document.getElementById('activeChatSubtext').textContent = 'No active connection';
+                document.getElementById('activeChatActions').classList.add('hidden');
+                document.getElementById('editNicknameBtn').classList.add('hidden');
+                this.updateProfileUI();
+                this.renderContactsList();
+                input.value = '';
+                this.closeModal('accountSettingsModal');
+                this.initPeerJS();
+                alert(FLASHSHARE_CLOUD_API ? `Recovered ${recoveredId}. Cloud sync was attempted; check the recovery status for the result.` : `Recovered ${recoveredId}. Cloud sync is not configured yet, so only local data is available.`);
+            }
+
+            // --- DISPLAY NAME & NICKNAMES ---
+            saveDisplayName() {
+                const input = document.getElementById('modalDisplayNameInput');
+                const val = input.value.trim();
+                if (val) {
+                    this.account.displayName = val;
+                    this.saveLocalStorage();
+                    this.updateProfileUI();
+                }
+                this.closeModal('nicknameModal');
+            }
+
+            saveContactNickname() {
+                if (!this.activeContactId) return;
+                const input = document.getElementById('contactNicknameInput');
+                this.contacts[this.activeContactId].nickname = input.value.trim();
+                this.saveLocalStorage();
+                this.selectContact(this.activeContactId);
+                this.closeModal('editNicknameModal');
+            }
+
+            // --- LIGHTBOX & HELPERS ---
+            openLightbox(src) {
+                document.getElementById('lightboxImage').src = src;
+                document.getElementById('lightboxDownloadBtn').href = src;
+                this.openModal('lightboxModal');
+            }
+
+            copyFlashId() {
+                navigator.clipboard.writeText(this.account.flashId);
+                confetti({ particleCount: 20, spread: 40 });
+            }
+
+            openModal(modalId) {
+                document.getElementById(modalId).classList.add('active');
+            }
+
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('active');
+            }
+
+            toggleSidebar() {
+                const sb = document.getElementById('sidebar');
+                const backdrop = document.getElementById('sidebarBackdrop');
+                sb.classList.toggle('-translate-x-full');
+                backdrop.classList.toggle('opacity-0');
+                backdrop.classList.toggle('pointer-events-none');
+            }
+
+            closeSidebar() {
+                const sb = document.getElementById('sidebar');
+                const backdrop = document.getElementById('sidebarBackdrop');
+                sb.classList.add('-translate-x-full');
+                backdrop.classList.add('opacity-0', 'pointer-events-none');
+            }
+
+            escapeHtml(str) {
+                return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            // --- ANIMATED CANVAS BACKGROUND ---
+            setupAmbientCanvas() {
+                const canvas = document.getElementById('bgCanvas');
+                const ctx = canvas.getContext('2d');
+
+                let w = canvas.width = window.innerWidth;
+                let h = canvas.height = window.innerHeight;
+
+                window.addEventListener('resize', () => {
+                    w = canvas.width = window.innerWidth;
+                    h = canvas.height = window.innerHeight;
+                });
+
+                const particles = Array.from({ length: 25 }, () => ({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    r: Math.random() * 120 + 60,
+                    vx: (Math.random() - 0.5) * 0.4,
+                    vy: (Math.random() - 0.5) * 0.4,
+                    hue: Math.random() > 0.5 ? 190 : 270
+                }));
+
+                const render = () => {
+                    ctx.clearRect(0, 0, w, h);
+                    particles.forEach(p => {
+                        p.x += p.vx;
+                        p.y += p.vy;
+
+                        if (p.x < -p.r) p.x = w + p.r;
+                        if (p.x > w + p.r) p.x = -p.r;
+                        if (p.y < -p.r) p.y = h + p.r;
+                        if (p.y > h + p.r) p.y = -p.r;
+
+                        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+                        grad.addColorStop(0, `hsla(${p.hue}, 80%, 50%, 0.08)`);
+                        grad.addColorStop(1, 'transparent');
+
+                        ctx.fillStyle = grad;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                    requestAnimationFrame(render);
+                };
+                render();
+            }
         }
-      }
 
-      qrScanAnimation = requestAnimationFrame(scanQRCodeFrame);
-    }
-
-    function closeCameraScannerModal() {
-      if (qrVideoStream) {
-        qrVideoStream.getTracks().forEach(t => t.stop());
-      }
-      if (qrScanAnimation) {
-        cancelAnimationFrame(qrScanAnimation);
-      }
-      closeModal('cameraScannerModal');
-    }
-
-    // New Chat & Nicknames Modals
-    function openNewChatModal() {
-      document.getElementById('newPeerIdInput').value = '';
-      document.getElementById('newPeerNicknameInput').value = '';
-      openModal('newChatModal');
-    }
-
-    function closeNewChatModal() {
-      closeModal('newChatModal');
-    }
-
-    function startNewChatFromModal() {
-      const peerId = document.getElementById('newPeerIdInput').value.trim().toUpperCase();
-      const nickname = document.getElementById('newPeerNicknameInput').value.trim();
-
-      if (!peerId) {
-        showToast('Please enter a valid FLASH ID', 'error');
-        return;
-      }
-
-      startNewChat(peerId, nickname);
-      closeNewChatModal();
-    }
-
-    function startNewChat(peerId, nickname = '') {
-      ensureContactExists(peerId);
-      if (nickname) {
-        contacts[peerId].nickname = nickname;
-      }
-      persistData();
-      renderContactsList();
-      selectActiveChat(peerId);
-    }
-
-    function openNicknameModal() {
-      if (!activePeerId) return;
-      document.getElementById('editNicknameInput').value = contacts[activePeerId]?.nickname || '';
-      openModal('nicknameModal');
-    }
-
-    function closeNicknameModal() {
-      closeModal('nicknameModal');
-    }
-
-    function saveNickname() {
-      if (!activePeerId) return;
-      const nickname = document.getElementById('editNicknameInput').value.trim();
-      contacts[activePeerId].nickname = nickname;
-      persistData();
-      renderContactsList();
-      selectActiveChat(activePeerId);
-      closeNicknameModal();
-      showToast('Nickname updated', 'success');
-    }
-
-    function removeNickname() {
-      if (!activePeerId) return;
-      contacts[activePeerId].nickname = '';
-      persistData();
-      renderContactsList();
-      selectActiveChat(activePeerId);
-      closeNicknameModal();
-    }
-
-    // Profile Settings Modal
-    function openProfileModal() {
-      openModal('profileModal');
-    }
-
-    function closeProfileModal() {
-      closeModal('profileModal');
-    }
-
-    function saveProfileSettings() {
-      const name = document.getElementById('profileDisplayNameInput').value.trim();
-      const pin = document.getElementById('securityPinInput').value.trim();
-
-      if (name) {
-        myDisplayName = name;
-        localStorage.setItem('flashshare_my_name', name);
-        document.getElementById('myAvatarDisplay').innerText = name.charAt(0).toUpperCase();
-      }
-
-      mySecurityPin = pin;
-      if (pin) {
-        localStorage.setItem('flashshare_security_pin', pin);
-      } else {
-        localStorage.removeItem('flashshare_security_pin');
-      }
-
-      showToast('Profile & Security Settings Saved', 'success');
-      closeProfileModal();
-    }
-
-    // Lightbox Modal
-    function openLightbox(src, name) {
-      document.getElementById('lightboxImage').src = src;
-      document.getElementById('lightboxDownloadBtn').href = src;
-      document.getElementById('lightboxCaption').innerText = name || 'Shared Image';
-      openModal('lightboxModal');
-    }
-
-    function closeLightboxModal() {
-      closeModal('lightboxModal');
-    }
-
-    // Utilities
-    function escapeHTML(str) {
-      return str.replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-      );
-    }
-
-    function showToast(msg, type = 'info') {
-      const container = document.getElementById('toastContainer');
-      const toast = document.createElement('div');
-
-      const bg = type === 'success' ? 'bg-emerald-950/90 border-emerald-700 text-emerald-200' 
-               : type === 'error' ? 'bg-red-950/90 border-red-700 text-red-200' 
-               : 'bg-slate-900/90 border-slate-700 text-slate-200';
-
-      toast.className = `pointer-events-auto px-3.5 py-2 rounded-xl border backdrop-blur-md text-xs font-semibold shadow-2xl transition transform translate-y-2 opacity-0 flex items-center space-x-2 ${bg}`;
-      toast.innerHTML = `<span>${msg}</span>`;
-
-      container.appendChild(toast);
-
-      requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-2', 'opacity-0');
-      });
-
-      setTimeout(() => {
-        toast.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
-    }
-  </script>
+        // Initialize Application
+        let app;
+        window.addEventListener('DOMContentLoaded', () => {
+            app = new FlashShareApp();
+        });
+    </script>
 </body>
 </html>
