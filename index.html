@@ -164,6 +164,16 @@
           </div>
         </div>
 
+        <!-- Received Text Messages -->
+        <div class="glass-card rounded-2xl p-5 shadow-xl border border-slate-800/80">
+          <div class="flex items-center justify-between gap-3 pb-3 border-b border-slate-800 mb-3">
+            <h3 class="font-semibold text-slate-200 flex items-center gap-2"><i data-lucide="message-square-text" class="w-5 h-5 text-brand-500"></i>Received Text</h3>
+            <span id="textCountBadge" class="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-300">0</span>
+          </div>
+          <div id="receivedTextEmpty" class="text-sm text-slate-500 py-3">Text sent from the other device will appear here.</div>
+          <div id="receivedTextList" class="space-y-3"></div>
+        </div>
+
         <!-- Live Received Images Gallery -->
         <div class="flex-1 glass-card rounded-2xl p-6 shadow-xl border border-slate-800/80 flex flex-col">
           <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
@@ -222,6 +232,16 @@
               <span>Send Files</span>
             </h3>
             <span id="senderConnectionStatus" class="text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800">Disconnected</span>
+          </div>
+
+          <!-- Send Text -->
+          <div class="mb-6 rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+            <label for="textToSend" class="block text-sm font-semibold text-slate-200 mb-2">Send Text</label>
+            <textarea id="textToSend" rows="4" maxlength="20000" placeholder="Type or paste a message to send to the connected device…" class="w-full resize-y rounded-xl glass-input text-white placeholder-slate-500 px-4 py-3 text-sm" aria-describedby="textLimitHint"></textarea>
+            <div class="mt-3 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+              <span id="textLimitHint" class="text-xs text-slate-500">Up to 20,000 characters</span>
+              <button type="button" onclick="sendTextMessage()" class="px-5 py-3 min-h-11 bg-brand-600 hover:bg-brand-500 font-semibold text-white rounded-xl transition flex items-center justify-center gap-2"><i data-lucide="send" class="w-4 h-4"></i>Send Text</button>
+            </div>
           </div>
 
           <!-- Drag and Drop Zone -->
@@ -469,12 +489,19 @@
       });
 
       conn.on('data', (data) => {
-        if (!data || typeof data !== 'object' || data.type !== 'IMAGE_TRANSFER') return;
+        if (!data || typeof data !== 'object') return;
+        if (data.type === 'TEXT_TRANSFER') {
+          if (typeof data.text !== 'string' || data.text.length > 20000) {
+            showToast('Rejected invalid or oversized text.', 'error'); return;
+          }
+          handleIncomingText(data.text, data.timestamp);
+          return;
+        }
+        if (data.type !== 'IMAGE_TRANSFER') return;
         if (typeof data.name !== 'string' || typeof data.data !== 'string' ||
             typeof data.mimeType !== 'string' || !/^image\/(png|jpeg|webp|gif|avif|bmp)$/.test(data.mimeType) ||
             data.data.length > 12 * 1024 * 1024 || !data.data.startsWith('data:' + data.mimeType + ';base64,')) {
-          showToast('Rejected an invalid or oversized image.', 'error');
-          return;
+          showToast('Rejected an invalid or oversized image.', 'error'); return;
         }
         handleIncomingImage(data);
       });
@@ -499,6 +526,63 @@
         senderStatus.innerText = 'Disconnected';
         senderStatus.className = 'text-xs text-slate-400 bg-slate-900 px-3 py-1 rounded-full border border-slate-800';
       }
+    }
+
+    // Send plain text over the same peer-to-peer connection.
+    function sendTextMessage() {
+      const field = document.getElementById('textToSend');
+      const text = field.value;
+      if (!activeConn || !activeConn.open) { showToast('Connect to a receiver before sending text.', 'error'); return; }
+      if (!text.trim()) { showToast('Type some text first.', 'error'); return; }
+      if (text.length > 20000) { showToast('Text must be 20,000 characters or less.', 'error'); return; }
+      try {
+        activeConn.send({ type: 'TEXT_TRANSFER', text, timestamp: new Date().toLocaleTimeString() });
+        field.value = '';
+        showToast('Text sent successfully!', 'success');
+      } catch (err) { showToast('Could not send text. Check the connection.', 'error'); }
+    }
+
+    function handleIncomingText(text, timestamp) {
+      const list = document.getElementById('receivedTextList');
+      const empty = document.getElementById('receivedTextEmpty');
+      const badge = document.getElementById('textCountBadge');
+      // Keep the most recent 50 messages in memory.
+      while (list.children.length >= 50) list.removeChild(list.lastElementChild);
+      empty.classList.add('hidden');
+      const card = document.createElement('article');
+      card.className = 'rounded-xl border border-slate-800 bg-slate-950/50 p-3';
+      const meta = document.createElement('div');
+      meta.className = 'text-xs text-slate-500 mb-2';
+      meta.textContent = 'Received ' + (typeof timestamp === 'string' ? timestamp.slice(0, 40) : 'just now');
+      const content = document.createElement('pre');
+      content.className = 'text-sm text-slate-200 whitespace-pre-wrap break-words font-sans';
+      content.textContent = text;
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'mt-3 px-3 py-2 min-h-10 rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-sm text-white inline-flex items-center gap-2';
+      copy.innerHTML = '<i data-lucide="copy" class="w-4 h-4"></i><span>Copy text</span>';
+      copy.addEventListener('click', () => copyText(text));
+      card.append(meta, content, copy);
+      list.prepend(card);
+      badge.textContent = String(list.children.length);
+      if (window.lucide) lucide.createIcons();
+      showToast('Received new text message.', 'success');
+    }
+
+    async function copyText(text) {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const area = document.createElement('textarea');
+          area.value = text; area.setAttribute('readonly', '');
+          area.style.position = 'fixed'; area.style.opacity = '0';
+          document.body.appendChild(area); area.select();
+          const ok = document.execCommand('copy'); area.remove();
+          if (!ok) throw new Error('Clipboard unavailable');
+        }
+        showToast('Text copied to clipboard!', 'success');
+      } catch (err) { showToast('Copy was blocked by your browser. Select and copy the text manually.', 'error'); }
     }
 
     // Send Image Files over DataChannel
